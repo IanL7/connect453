@@ -16,5 +16,11 @@
 //#include "drivers/io_expander.h"
 #include "drivers/LM75.h"
 
+extern cyhal_pwm_t lin_fore_pwm_obj;
+extern cyhal_pwm_t lin_back_pwm_obj;
+extern cyhal_pwm_t servo_pwm_obj;
+extern cyhal_pwm_t game_state_led_b;
+extern cyhal_pwm_t game_state_led_r;
+extern cyhal_pwm_t game_state_led_g;
 
 #endif /* MAIN_H_ */

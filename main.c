@@ -15,7 +15,12 @@
 /*******************************************************************************
 * External Global Variables
 ******************************************************************************/
-void task_blink_led(void *param);
+cyhal_pwm_t lin_fore_pwm_obj;
+cyhal_pwm_t lin_back_pwm_obj;
+cyhal_pwm_t servo_pwm_obj;
+cyhal_pwm_t game_state_led_b;
+cyhal_pwm_t game_state_led_r;
+cyhal_pwm_t game_state_led_g;
 
 void mcu_all_leds_init()
 {
@@ -163,7 +168,7 @@ void mcu_all_pbs_init()
     // TODO: Add serial indication if an error occurred for a specific PB
     cy_rslt_t rslt;
 
-    // PB 1
+    // PB 1 - Pass turn
     rslt = cyhal_gpio_init(
         P10_4,
         CYHAL_GPIO_DIR_INPUT,
@@ -179,7 +184,7 @@ void mcu_all_pbs_init()
         };
     }
 
-    // PB 2
+    // PB 2 - Pause / Resume
     rslt = cyhal_gpio_init(
         P10_2,
         CYHAL_GPIO_DIR_INPUT,
@@ -194,6 +199,64 @@ void mcu_all_pbs_init()
         {
         };
     }
+}
+
+void pwm_init(int lin_hz, int lin_duty, int servo_hz, int servo_duty, int rgb_hz, int rgb_duty)
+{
+    cy_rslt_t rslt;
+    /////////////////////////////////////////////////////////////////
+    // Linear Actuator Foreward
+    /////////////////////////////////////////////////////////////////
+    /* Initialize PWM on the supplied pin and assign a new clock */
+    rslt = cyhal_pwm_init(&lin_fore_pwm_obj, P5_6, NULL);
+    /* Set a duty cycle of 50% and frequency of 1Hz */
+    rslt = cyhal_pwm_set_duty_cycle(&lin_fore_pwm_obj, lin_duty, lin_hz);
+    /* Stop the PWM output */
+    rslt = cyhal_pwm_stop(&lin_fore_pwm_obj);
+
+    /////////////////////////////////////////////////////////////////
+    // Linear Actuator Backward
+    /////////////////////////////////////////////////////////////////
+    /* Initialize PWM on the supplied pin and assign a new clock */
+    rslt = cyhal_pwm_init(&lin_back_pwm_obj, P7_7, NULL);
+    /* Set a duty cycle of 50% and frequency of 1Hz */
+    rslt = cyhal_pwm_set_duty_cycle(&lin_back_pwm_obj, lin_duty, lin_hz);
+    /* Stop the PWM output */
+    rslt = cyhal_pwm_stop(&lin_back_pwm_obj);
+    
+    /////////////////////////////////////////////////////////////////
+    // Servo (dropper unit)
+    /////////////////////////////////////////////////////////////////
+    /* Initialize PWM on the supplied pin and assign a new clock */
+    rslt = cyhal_pwm_init(&servo_pwm_obj, P6_3, NULL);
+    /* Set a duty cycle of 50% and frequency of 1Hz */
+    rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, servo_duty, servo_hz);
+    /* Stop the PWM output */
+    rslt = cyhal_pwm_stop(&servo_pwm_obj);
+
+    /////////////////////////////////////////////////////////////////
+    // RGB1 (game state led)
+    /////////////////////////////////////////////////////////////////
+    /* Initialize PWM on the supplied pin and assign a new clock */
+    rslt = cyhal_pwm_init(&game_state_led_b, P5_5, NULL);
+    /* Set a duty cycle of 50% and frequency of 1Hz */
+    rslt = cyhal_pwm_set_duty_cycle(&game_state_led_b, rgb_duty, rgb_hz);
+    /* Stop the PWM output */
+    rslt = cyhal_pwm_stop(&game_state_led_b);
+
+    /* Initialize PWM on the supplied pin and assign a new clock */
+    rslt = cyhal_pwm_init(&game_state_led_r, P5_3, NULL);
+    /* Set a duty cycle of 50% and frequency of 1Hz */
+    rslt = cyhal_pwm_set_duty_cycle(&game_state_led_r, rgb_duty, rgb_hz);
+    /* Stop the PWM output */
+    rslt = cyhal_pwm_stop(&game_state_led_r);
+
+    /* Initialize PWM on the supplied pin and assign a new clock */
+    rslt = cyhal_pwm_init(&game_state_led_g, P5_2, NULL);
+    /* Set a duty cycle of 50% and frequency of 1Hz */
+    rslt = cyhal_pwm_set_duty_cycle(&game_state_led_g, rgb_duty, rgb_hz);
+    /* Stop the PWM output */
+    rslt = cyhal_pwm_stop(&game_state_led_g);
 }
 
 void mcu_startup_sound()
@@ -260,21 +323,5 @@ int main(void)
 
     for (;;)
     {
-    }
-}
-
-void task_blink_led(void *param)
-{
-    cy_rslt_t rslt;
-
-    /* Suppress warning for unused parameter */
-    (void)param;
-
-
-    /* Repeatedly running part of the task */
-    for (;;)
-    {
-        vTaskDelay(300);
-        cyhal_gpio_toggle(P5_5);
     }
 }
