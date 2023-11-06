@@ -16,11 +16,46 @@
 //#include "drivers/io_expander.h"
 #include "drivers/LM75.h"
 
+#define BIT_0       (1 << 0)
+#define BIT_1       (1 << 1)
+#define BIT_2       (1 << 2)
+#define BIT_3       (1 << 3)
+#define BIT_4       (1 << 4)
+#define BIT_5       (1 << 5)
+#define BIT_6       (1 << 6)
+#define BIT_7       (1 << 7)
+
+#define RGB_GREEN   1
+#define RGB_YELLOW  2
+#define RGB_RED     3
+#define RGB_OFF     4
+
+#define STATE_PAUSE     0
+#define STATE_INIT      1
+#define STATE_P1_TURN   2
+#define STATE_P2_TURN   3
+#define STATE_GAME_OVER 4
+
+#define PB_PRESSED      false
+#define PB_NOT_PRESSED  true
+
+#define ALL_EVENTS_MASK             EVENT_PASS_TURN_MASK | EVENT_PAUSE_MASK | EVENT_DROPPER_CLEAR_MASK
+#define EVENT_PASS_TURN_MASK        BIT_0
+#define EVENT_PAUSE_MASK            BIT_1 
+#define EVENT_DROPPER_CLEAR_MASK    BIT_2       
+
+#define PIN_PASS_TURN_PB    P10_4
+#define PIN_PAUSE_PB        P10_2
+
 extern cyhal_pwm_t lin_fore_pwm_obj;
 extern cyhal_pwm_t lin_back_pwm_obj;
 extern cyhal_pwm_t servo_pwm_obj;
 extern cyhal_pwm_t game_state_led_b;
 extern cyhal_pwm_t game_state_led_r;
 extern cyhal_pwm_t game_state_led_g;
+
+extern void rgb_on(cyhal_pwm_t *rgb_obj_r, cyhal_pwm_t *rgb_obj_g, cyhal_pwm_t *rgb_obj_b, int color);
+extern QueueHandle_t state_queue;
+
 
 #endif /* MAIN_H_ */

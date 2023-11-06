@@ -1,12 +1,12 @@
 /*
- * connect4-tasks.h
+ * task-pause.h
  *
  *  Created on: Nov 4, 2023
  *      Author: Ian Lodes
  */
 
-#ifndef CON4TASKS_H_
-#define CON4TASKS_H_
+#ifndef TASKPAUSE_H_
+#define TASKPAUSE_H_
 
 #include "drivers/leds.h"
 #include "drivers/push_button.h"
@@ -17,9 +17,4 @@
 #include "drivers/LM75.h"
 #include "main.h"
 
-#define RGB_GREEN   1
-#define RGB_YELLOW  2
-#define RGB_RED     3
-#define RGB_OFF     4
-
-#endif /* CON4TASKS_H_ */
+#endif /* TASKPAUSE_H_ */

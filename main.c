@@ -22,6 +22,46 @@ cyhal_pwm_t game_state_led_b;
 cyhal_pwm_t game_state_led_r;
 cyhal_pwm_t game_state_led_g;
 
+/*******************************************************************************
+* Static Global Variables
+******************************************************************************/
+static EventGroupHandle_t xConnectFourEventGroup;
+static QueueHandle_t xDistanceQueue;
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+// Plain Functions
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void rgb_on(cyhal_pwm_t *rgb_obj_r, cyhal_pwm_t *rgb_obj_g, cyhal_pwm_t *rgb_obj_b, int color)
+{
+   switch (color)
+   {
+    case RGB_GREEN:
+        cyhal_pwm_stop(rgb_obj_r);
+        cyhal_pwm_stop(rgb_obj_b);
+        cyhal_pwm_start(rgb_obj_g);
+        break;
+    
+    case RGB_RED:
+        cyhal_pwm_start(rgb_obj_r);
+        cyhal_pwm_stop(rgb_obj_b);
+        cyhal_pwm_stop(rgb_obj_g);
+        break;
+    
+    case RGB_YELLOW:
+        cyhal_pwm_stop(rgb_obj_r);
+        cyhal_pwm_start(rgb_obj_b);
+        cyhal_pwm_start(rgb_obj_g);
+        break;
+
+    default:
+        cyhal_pwm_stop(rgb_obj_r);
+        cyhal_pwm_stop(rgb_obj_b);
+        cyhal_pwm_stop(rgb_obj_g);
+        break;
+   }
+}
+
 void mcu_all_leds_init()
 {
     // TODO: Add serial indication if an error occurred for a specific LED
@@ -170,7 +210,7 @@ void mcu_all_pbs_init()
 
     // PB 1 - Pass turn
     rslt = cyhal_gpio_init(
-        P10_4,
+        PIN_PASS_TURN_PB,
         CYHAL_GPIO_DIR_INPUT,
         CYHAL_GPIO_DRIVE_NONE,
         false
@@ -186,7 +226,7 @@ void mcu_all_pbs_init()
 
     // PB 2 - Pause / Resume
     rslt = cyhal_gpio_init(
-        P10_2,
+        PIN_PAUSE_PB,
         CYHAL_GPIO_DIR_INPUT,
         CYHAL_GPIO_DRIVE_NONE,
         false
@@ -294,6 +334,169 @@ void mcu_startup_sound()
     cyhal_dac_free(&my_dac_obj);
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+// FreeRTOS Tasks
+///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void task_state_manager(void *param)
+{
+    static int STATE;
+
+    cy_rslt_t rslt;
+
+    /* Suppress warning for unused parameter */
+    (void)param;
+
+    STATE = STATE_INIT;
+
+    for (;;) 
+    {
+        switch (STATE)
+        {
+            case STATE_INIT:
+
+                vTaskResume()
+
+                rgb_on(&game_state_led_r, &game_state_led_g, &game_state_led_b, RGB_YELLOW);
+
+                xEventGroupWaitBits(
+                    xConnectFourEventGroup, 
+                    EVENT_PASS_TURN_MASK | EVENT_DROPPER_CLEAR_MASK,
+                    pdTRUE,
+                    pdTRUE,
+                    portMAX_DELAY);
+
+                rgb_on(&game_state_led_r, &game_state_led_g, &game_state_led_b, RGB_GREEN);
+
+                STATE = STATE_P1_TURN;
+                break;
+            
+            case STATE_P1_TURN:
+
+        }
+    }
+}
+
+void task_pole_pause_pb(void *param)
+{
+    /* Suppress warning for unused parameter */
+    (void)param;
+
+    TickType_t xLastWakeTime;
+
+    // PB check freq is 20ms
+    const TickType_t xFrequency = 20/portTICK_PERIOD_MS;
+
+    bool curr_pb_state = PB_NOT_PRESSED;
+    bool prev_pb_state = PB_NOT_PRESSED;
+
+    // Initialise the xLastWakeTime variable with the current time.
+    xLastWakeTime = xTaskGetTickCount();
+
+    for( ;; )
+    {
+        // Wait for the next cycle.
+        vTaskDelayUntil( &xLastWakeTime, xFrequency);
+
+        // Get PB level
+        curr_pb_state = cyhal_gpio_read(PIN_PAUSE_PB);
+
+        if (curr_pb_state == PB_PRESSED && prev_pb_state == PB_NOT_PRESSED)
+        {
+            xEventGroupSetBits(xConnectFourEventGroup, EVENT_PAUSE_MASK);
+        }
+        prev_pb_state = curr_pb_state;
+    }
+}
+
+void task_pole_passturn_pb(void *param)
+{
+    /* Suppress warning for unused parameter */
+    (void)param;
+
+    TickType_t xLastWakeTime;
+
+    // PB check freq is 20ms
+    const TickType_t xFrequency = 20/portTICK_PERIOD_MS;
+
+    bool curr_pb_state = PB_NOT_PRESSED;
+    bool prev_pb_state = PB_NOT_PRESSED;
+
+    // Initialise the xLastWakeTime variable with the current time.
+    xLastWakeTime = xTaskGetTickCount();
+
+    for( ;; )
+    {
+        // Wait for the next cycle.
+        vTaskDelayUntil( &xLastWakeTime, xFrequency);
+
+        // Get PB level
+        curr_pb_state = cyhal_gpio_read(PIN_PASS_TURN_PB);
+
+        if (curr_pb_state == PB_PRESSED && prev_pb_state == PB_NOT_PRESSED)
+        {
+            xEventGroupSetBits(xConnectFourEventGroup, EVENT_PASS_TURN_MASK);
+        }
+        prev_pb_state = curr_pb_state;
+    }
+}
+
+// Put this on the back-burner
+// Should have highest priority
+void task_pause(void *param)
+{
+    cy_rslt_t rslt;
+
+    /* Suppress warning for unused parameter */
+    (void)param;
+
+    rgb_on(&game_state_led_r, &game_state_led_g, &game_state_led_b, RGB_YELLOW);
+
+    rslt = cyhal_pwm_stop(&lin_fore_pwm_obj);
+    rslt = cyhal_pwm_stop(&lin_back_pwm_obj);
+    rslt = cyhal_pwm_stop(&servo_pwm_obj);
+
+    // vTaskSuspend() all tasks? Or maybe have this be in the "calling" task (all of them)
+    // Deferred Interrupt Handling (freertos)?
+
+    for (;;)
+    {
+        // If pause button pressed again, leave pause state and resume
+    }
+}
+
+void task_clear_dropper(void *param)
+{
+    cy_rslt_t rslt;
+
+    uint8_t curr_dist_val;
+
+    /* Suppress warning for unused parameter */
+    (void)param;
+
+    unsigned long dist_buffer;
+
+    rgb_on(&game_state_led_r, &game_state_led_g, &game_state_led_b, RGB_YELLOW);
+
+    /* Repeatedly running part of the task */
+    for (;;)
+    {
+        curr_dist_val = xQueueReceive(xDistanceQueue, &dist_buffer, portMAX_DELAY); // is max delay appropriate here?
+        if (curr_dist_val > 10)
+        {
+            rslt = cyhal_pwm_stop(&lin_fore_pwm_obj);
+            rslt = cyhal_pwm_start(&lin_back_pwm_obj);
+        }
+        else 
+        {
+            rslt = cyhal_pwm_stop(&lin_fore_pwm_obj);
+            rslt = cyhal_pwm_stop(&lin_back_pwm_obj);
+            
+            xEventGroupSetBits(xConnectFourEventGroup, EVENT_DROPPER_CLEAR_MASK);
+        }
+    }
+}
+
 int main(void)
 {
     cy_rslt_t rslt;
@@ -308,6 +511,10 @@ int main(void)
 
     // Startup sound
     mcu_startup_sound();
+
+    // Create inter-task messaging handles
+    xDistanceQueue = xQueueCreate(10, sizeof( unsigned long )); // change type and len as necessary
+    xConnectFourEventGroup = xEventGroupCreate();
 
     // create a task to blink the onboard LED
     xTaskCreate(
