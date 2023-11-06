@@ -22,13 +22,20 @@ cyhal_pwm_t game_state_led_b;
 cyhal_pwm_t game_state_led_r;
 cyhal_pwm_t game_state_led_g;
 
-
-
 /*******************************************************************************
-* Static Global Variables
+* Static Global Variables (take away static when we have multiple files)
 ******************************************************************************/
 static EventGroupHandle_t xConnectFourEventGroup;
 static QueueHandle_t xDistanceQueue;
+static QueueHandle_t xBoardQueue;
+
+/*******************************************************************************
+* Task Handles
+******************************************************************************/
+TaskHandle_t state_manager_handle;
+TaskHandle_t pole_pause_pb_handle;
+TaskHandle_t pole_passturn_pb_handle;
+TaskHandle_t clear_dropper_handle;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Plain Functions
@@ -69,7 +76,7 @@ void mcu_all_leds_init()
     // TODO: Add serial indication if an error occurred for a specific LED
     cy_rslt_t rslt;
 
-    // LED1
+    // LED1 (ON - OFF)
     rslt = cyhal_gpio_init(
         P5_1,
         CYHAL_GPIO_DIR_OUTPUT,
@@ -84,7 +91,7 @@ void mcu_all_leds_init()
         };
     }
 
-    // LED 2
+    // LED 2 (Player 2 Turn)
     rslt = cyhal_gpio_init(
         P9_4,
         CYHAL_GPIO_DIR_OUTPUT,
@@ -99,7 +106,7 @@ void mcu_all_leds_init()
         };
     }
 
-    // LED 3
+    // LED 3 (Player 1 Turn)
     rslt = cyhal_gpio_init(
         P10_1,
         CYHAL_GPIO_DIR_OUTPUT,
@@ -350,16 +357,19 @@ void task_state_manager(void *param)
     (void)param;
 
     STATE = STATE_INIT;
+    uint32_t event;
 
     for (;;) 
     {
         switch (STATE)
         {
             case STATE_INIT:
+                vTaskResume(clear_dropper_handle);
 
-                vTaskResume()
-
+                // Set LEDs
                 rgb_on(&game_state_led_r, &game_state_led_g, &game_state_led_b, RGB_YELLOW);
+                cyhal_gpio_write(PIN_PLAYER2_LED, false);
+                cyhal_gpio_write(PIN_PLAYER1_LED, false);
 
                 xEventGroupWaitBits(
                     xConnectFourEventGroup, 
@@ -367,13 +377,63 @@ void task_state_manager(void *param)
                     pdTRUE,
                     pdTRUE,
                     portMAX_DELAY);
-
+                
+                // Set Game state LED to green
                 rgb_on(&game_state_led_r, &game_state_led_g, &game_state_led_b, RGB_GREEN);
 
                 STATE = STATE_P1_TURN;
                 break;
             
             case STATE_P1_TURN:
+                vTaskSuspend(clear_dropper_handle);
+
+                // Set LEDs
+                cyhal_gpio_write(PIN_PLAYER2_LED, false);
+                cyhal_gpio_write(PIN_PLAYER1_LED, true);
+
+                // Include mask here for error handling of player 1 move (doesn't put exactly one piece in)
+                // Should I be clearing all bits here?
+                for (;;) 
+                {
+                    xEventGroupWaitBits(
+                        xConnectFourEventGroup, 
+                        ALL_EVENTS_MASK,
+                        pdFALSE,
+                        pdFALSE,
+                        portMAX_DELAY);
+                    event = xEventGroupGetBits(xConnectFourEventGroup);
+
+                    if ( (event | EVENT_MOVE_ERROR) )
+                    {
+                        xEventGroupClearBits(xConnectFourEventGroup, ALL_EVENTS_MASK);
+                        STATE = STATE_MOVE_ERROR;
+                        break;
+                    }
+                    else if ( (event | EVENT_PLAYER1_WIN) )
+                    {
+                        xEventGroupClearBits(xConnectFourEventGroup, ALL_EVENTS_MASK);
+                        STATE = STATE_PLAYER1_WIN;
+                        break;
+                    }
+                    else if ( (event | EVENT_PLAYER2_WIN) )
+                    {
+                        xEventGroupClearBits(xConnectFourEventGroup, ALL_EVENTS_MASK);
+                        STATE = STATE_PLAYER2_WIN;
+                        break;
+                    }
+                    else if ( (event | EVENT_PASS_TURN_MASK) )
+                    {
+                        xEventGroupClearBits(xConnectFourEventGroup, ALL_EVENTS_MASK);
+                        STATE = STATE_P2_TURN;
+                        break;
+                    }
+                }
+                break;
+
+            case STATE_P2_TURN:
+                // Set LEDs
+                cyhal_gpio_write(PIN_PLAYER2_LED, false);
+                cyhal_gpio_write(PIN_PLAYER1_LED, true);
 
         }
     }
@@ -478,18 +538,32 @@ void task_clear_dropper(void *param)
 
     unsigned long dist_buffer;
 
+    TickType_t xLastWakeTime;
+
+    // Distance check freq is 50ms
+    const TickType_t xFrequency = 50/portTICK_PERIOD_MS;
+
     rgb_on(&game_state_led_r, &game_state_led_g, &game_state_led_b, RGB_YELLOW);
+
+    curr_dist_val = xQueueReceive(xDistanceQueue, &dist_buffer, portMAX_DELAY); // is max delay appropriate here?
+    if (curr_dist_val > 10)
+    {
+        rslt = cyhal_pwm_stop(&lin_fore_pwm_obj);
+        rslt = cyhal_pwm_start(&lin_back_pwm_obj);
+    }
+
+    // Initialise the xLastWakeTime variable with the current time.
+    xLastWakeTime = xTaskGetTickCount();
 
     /* Repeatedly running part of the task */
     for (;;)
     {
-        curr_dist_val = xQueueReceive(xDistanceQueue, &dist_buffer, portMAX_DELAY); // is max delay appropriate here?
-        if (curr_dist_val > 10)
-        {
-            rslt = cyhal_pwm_stop(&lin_fore_pwm_obj);
-            rslt = cyhal_pwm_start(&lin_back_pwm_obj);
-        }
-        else 
+        // Wait for the next cycle.
+        vTaskDelayUntil( &xLastWakeTime, xFrequency);
+
+        curr_dist_val = xQueueReceive(xDistanceQueue, &dist_buffer, portMAX_DELAY);
+
+        if (curr_dist_val <= 10)
         {
             rslt = cyhal_pwm_stop(&lin_fore_pwm_obj);
             rslt = cyhal_pwm_stop(&lin_back_pwm_obj);
@@ -515,7 +589,8 @@ int main(void)
     mcu_startup_sound();
 
     // Create inter-task messaging handles
-    xDistanceQueue = xQueueCreate(10, sizeof( unsigned long )); // change type and len as necessary
+    xDistanceQueue = xQueueCreate(1, sizeof( unsigned long )); // TODO: change type as necessary
+    xBoardQueue = xQueueCreate(1, sizeof( unsigned long )); // TODO: change type as necessary
     xConnectFourEventGroup = xEventGroupCreate();
 
     // Create tasks
@@ -526,7 +601,7 @@ int main(void)
         configMINIMAL_STACK_SIZE,
         NULL,
         1,
-        NULL);
+        &state_manager_handle);
     
     xTaskCreate(
         task_pole_pause_pb,
@@ -534,7 +609,7 @@ int main(void)
         configMINIMAL_STACK_SIZE,
         NULL,
         2,
-        NULL);
+        &pole_pause_pb_handle);
     
     xTaskCreate(
         task_pole_passturn_pb,
@@ -542,7 +617,7 @@ int main(void)
         configMINIMAL_STACK_SIZE,
         NULL,
         2,
-        NULL);
+        &pole_passturn_pb_handle);
 
     xTaskCreate(
         task_clear_dropper,
@@ -550,7 +625,9 @@ int main(void)
         configMINIMAL_STACK_SIZE,
         NULL,
         2,
-        NULL);
+        &clear_dropper_handle);
+
+    // DISTANCE SENSOR TASK SHOULD USE xQueueOverwrite TO SEND DATA!
     
     // Start the scheduler
     vTaskStartScheduler();

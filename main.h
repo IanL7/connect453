@@ -30,22 +30,30 @@
 #define RGB_RED     3
 #define RGB_OFF     4
 
-#define STATE_PAUSE     0
-#define STATE_INIT      1
-#define STATE_P1_TURN   2
-#define STATE_P2_TURN   3
-#define STATE_GAME_OVER 4
+#define STATE_PAUSE         0
+#define STATE_INIT          1
+#define STATE_P1_TURN       2
+#define STATE_P2_TURN       3
+#define STATE_PLAYER1_WIN   4
+#define STATE_PLAYER2_WIN   5
+#define STATE_MOVE_ERROR    6
 
 #define PB_PRESSED      false
 #define PB_NOT_PRESSED  true
 
-#define ALL_EVENTS_MASK             EVENT_PASS_TURN_MASK | EVENT_PAUSE_MASK | EVENT_DROPPER_CLEAR_MASK
+#define ALL_EVENTS_MASK             0xFFFFFFFF
 #define EVENT_PASS_TURN_MASK        BIT_0
 #define EVENT_PAUSE_MASK            BIT_1 
-#define EVENT_DROPPER_CLEAR_MASK    BIT_2       
+#define EVENT_DROPPER_CLEAR_MASK    BIT_2   
+#define EVENT_PLAYER1_WIN           BIT_3
+#define EVENT_PLAYER2_WIN           BIT_4
+#define EVENT_MOVE_ERROR            BIT_5
 
 #define PIN_PASS_TURN_PB    P10_4
 #define PIN_PAUSE_PB        P10_2
+#define PIN_PLAYER1_LED     P10_1
+#define PIN_PLAYER2_LED     P9_4
+#define PIN_ONOFF_LED       P5_1
 
 extern cyhal_pwm_t lin_fore_pwm_obj;
 extern cyhal_pwm_t lin_back_pwm_obj;
