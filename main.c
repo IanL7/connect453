@@ -22,6 +22,8 @@ cyhal_pwm_t game_state_led_b;
 cyhal_pwm_t game_state_led_r;
 cyhal_pwm_t game_state_led_g;
 
+
+
 /*******************************************************************************
 * Static Global Variables
 ******************************************************************************/
@@ -516,13 +518,38 @@ int main(void)
     xDistanceQueue = xQueueCreate(10, sizeof( unsigned long )); // change type and len as necessary
     xConnectFourEventGroup = xEventGroupCreate();
 
-    // create a task to blink the onboard LED
+    // Create tasks
+    // TODO: Update priorites
     xTaskCreate(
-        task_blink_led,
-        "Blink LED Task",
+        task_state_manager,
+        "State Manager",
         configMINIMAL_STACK_SIZE,
         NULL,
-        3,
+        1,
+        NULL);
+    
+    xTaskCreate(
+        task_pole_pause_pb,
+        "Pole Pause Push Button",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        2,
+        NULL);
+    
+    xTaskCreate(
+        task_pole_passturn_pb,
+        "Pole Pass-Turn Push Button",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        2,
+        NULL);
+
+    xTaskCreate(
+        task_clear_dropper,
+        "Clear Dropper",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        2,
         NULL);
     
     // Start the scheduler
