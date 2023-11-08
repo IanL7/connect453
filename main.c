@@ -12,6 +12,10 @@
 #include <task.h>
 #include <semphr.h>
 #include <event_groups.h>
+
+// NOTE: PLAYER 1 ASSUMED TO BE YELLOW!
+// NOTE: PLAYER 2 ASSUMED TO BE BLUE!
+
 /*******************************************************************************
 * External Global Variables
 ******************************************************************************/
@@ -483,7 +487,97 @@ uint8_t process_board()
     {
         return BOARD_ERROR;
     }
-    // TODO: implement winner checks
+
+    // Check for winner vert
+    for (int i = 0; i < BOARD_SIZE - BOARD_WIDTH * 3; i++)
+    {
+        if (rpi_i2c_response_curr[i] == BLUE_PIECE &&
+            rpi_i2c_response_curr[i+7] == BLUE_PIECE &&
+            rpi_i2c_response_curr[i+14] == BLUE_PIECE &&
+            rpi_i2c_response_curr[i+21] == BLUE_PIECE)
+        {
+            return BOARD_WIN_P2;
+        }
+        else if (rpi_i2c_response_curr[i] == BLUE_PIECE &&
+                 rpi_i2c_response_curr[i+7] == BLUE_PIECE &&
+                 rpi_i2c_response_curr[i+14] == BLUE_PIECE &&
+                 rpi_i2c_response_curr[i+21] == BLUE_PIECE)
+        {
+            return BOARD_WIN_P1;
+        }
+    }
+
+    // Check for winner horiz
+    for (int r = 0; r < (BOARD_SIZE - BOARD_WIDTH) + 1; r += BOARD_WIDTH)
+    {
+        for (int c = r; c < 4; c++)
+            if (rpi_i2c_response_curr[c] == BLUE_PIECE &&
+                rpi_i2c_response_curr[c+1] == BLUE_PIECE &&
+                rpi_i2c_response_curr[c+2] == BLUE_PIECE &&
+                rpi_i2c_response_curr[c+3] == BLUE_PIECE)
+            {
+                return BOARD_WIN_P2;
+            }
+            else if (rpi_i2c_response_curr[c] == BLUE_PIECE &&
+                    rpi_i2c_response_curr[c+1] == BLUE_PIECE &&
+                    rpi_i2c_response_curr[c+2] == BLUE_PIECE &&
+                    rpi_i2c_response_curr[c+3] == BLUE_PIECE)
+            {
+                return BOARD_WIN_P1;
+            }
+    }
+
+    // Check for winner diag 1 
+    // X
+    //   X
+    //     X
+    //       X
+    for (int r = 0; r < (BOARD_SIZE - BOARD_WIDTH - BOARD_WIDTH * 3) + 1; r += BOARD_WIDTH)
+    {
+        for (int c = r; c < 4; c++)
+        {
+            if (rpi_i2c_response_curr[c] == BLUE_PIECE &&
+                rpi_i2c_response_curr[c+(BOARD_WIDTH+1)] == BLUE_PIECE &&
+                rpi_i2c_response_curr[c+2*(BOARD_WIDTH+1)] == BLUE_PIECE &&
+                rpi_i2c_response_curr[c+3*(BOARD_WIDTH+1)] == BLUE_PIECE)
+            {
+                return BOARD_WIN_P2;
+            }
+            else if (rpi_i2c_response_curr[c] == BLUE_PIECE &&
+                    rpi_i2c_response_curr[c+(BOARD_WIDTH+1)] == BLUE_PIECE &&
+                    rpi_i2c_response_curr[c+2*(BOARD_WIDTH+1)] == BLUE_PIECE &&
+                    rpi_i2c_response_curr[c+3*(BOARD_WIDTH+1)] == BLUE_PIECE)
+            {
+                return BOARD_WIN_P1;
+            }
+        }
+    }
+
+    // Check for winner diag 2
+    //       X
+    //     X
+    //   X
+    // X
+    for (int r = BOARD_WIDTH - 4; r < BOARD_SIZE - BOARD_WIDTH * 3; r += BOARD_WIDTH)
+    {
+        for (int c = r; c < 4; c++)
+        {
+            if (rpi_i2c_response_curr[c] == BLUE_PIECE &&
+                rpi_i2c_response_curr[c+(BOARD_WIDTH-1)] == BLUE_PIECE &&
+                rpi_i2c_response_curr[c+2*(BOARD_WIDTH-1)] == BLUE_PIECE &&
+                rpi_i2c_response_curr[c+3*(BOARD_WIDTH-1)] == BLUE_PIECE)
+            {
+                return BOARD_WIN_P2;
+            }
+            else if (rpi_i2c_response_curr[c] == BLUE_PIECE &&
+                    rpi_i2c_response_curr[c+(BOARD_WIDTH-1)] == BLUE_PIECE &&
+                    rpi_i2c_response_curr[c+2*(BOARD_WIDTH-1)] == BLUE_PIECE &&
+                    rpi_i2c_response_curr[c+3*(BOARD_WIDTH-1)] == BLUE_PIECE)
+            {
+                return BOARD_WIN_P1;
+            }
+        }
+    }
     return BOARD_VALID;
 }
 
@@ -618,8 +712,6 @@ void task_state_manager(void *param)
                 rgb_on(&winner_led_r, &winner_led_g, &winner_led_b, RGB_BLUE);
                 cyhal_gpio_write(PIN_PLAYER2_LED, false);
                 cyhal_gpio_write(PIN_PLAYER1_LED, false);
-
-
         }
     }
 }

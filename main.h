@@ -17,7 +17,9 @@
 #include "drivers/LM75.h"
 
 // Board stuff
-#define BOARD_SIZE                  42          // board width * board height
+#define BOARD_WIDTH                 7
+#define BOARD_HEIGHT                6
+#define BOARD_SIZE                  (BOARD_WIDTH * BOARD_HEIGHT)
 #define EMPTY_PIECE                 0
 #define BLUE_PIECE                  1
 #define YELLOW_PIECE                2
