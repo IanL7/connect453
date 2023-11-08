@@ -861,6 +861,7 @@ int main(void)
     /* Initialize the device and board peripherals */
     rslt = cybsp_init();
     CY_ASSERT(CY_RSLT_SUCCESS == rslt);
+    console_init();     // For printing to console
     mcu_all_leds_init();
     mcu_all_pbs_init();
     i2c_init();
