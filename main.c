@@ -55,7 +55,7 @@ void mcu_reg_leds_init()
         PIN_PLAYER2_LED,
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
-        true);
+        false);
 
     if (rslt != CY_RSLT_SUCCESS)
     {
@@ -70,7 +70,7 @@ void mcu_reg_leds_init()
         PIN_PLAYER1_LED,
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
-        true);
+        false);
 
     if (rslt != CY_RSLT_SUCCESS)
     {
@@ -151,66 +151,55 @@ void task_state_manager(void *param)
     (void)param;
 
     STATE = STATE_P1_TURN;
-    uint32_t event;
 
     for (;;) 
     {
+        printf("it1\n\r");
         switch (STATE)
         {     
             case STATE_P1_TURN:
-
+                printf("*-- P1 Turn --*\n\r");
                 // Set LEDs
                 cyhal_gpio_write(PIN_PLAYER2_LED, false);
                 cyhal_gpio_write(PIN_PLAYER1_LED, true);
 
                 // Should I be clearing all bits here?
-                for (;;) 
-                {
-                    xEventGroupWaitBits(
-                        xConnectFourEventGroup, 
-                        ALL_EVENTS_MASK,
-                        pdFALSE,
-                        pdFALSE,
-                        portMAX_DELAY);
-                    event = xEventGroupGetBits(xConnectFourEventGroup);
+                xEventGroupWaitBits(
+                    xConnectFourEventGroup, 
+                    EVENT_PASS_TURN_MASK,
+                    pdTRUE,
+                    pdTRUE,
+                    portMAX_DELAY);
 
-                    if ( (event | EVENT_PASS_TURN_MASK) )
-                    {
-                        xEventGroupClearBits(xConnectFourEventGroup, ALL_EVENTS_MASK);
-                        STATE = STATE_P2_TURN;
-                        break;
-                    }
-                }
+                printf("*-- passed wait pb1 --*\n\r");
+
+                STATE = STATE_P2_TURN;
                 break;
 
             case STATE_P2_TURN:
+                printf("*-- P2 Turn --*\n\r");
                 // Set LEDs
                 cyhal_gpio_write(PIN_PLAYER2_LED, true);
                 cyhal_gpio_write(PIN_PLAYER1_LED, false);
 
-                for (;;)
-                {
-                    xEventGroupWaitBits(
-                            xConnectFourEventGroup, 
-                            ALL_EVENTS_MASK,
-                            pdFALSE,
-                            pdFALSE,
-                            portMAX_DELAY);
-                    event = xEventGroupGetBits(xConnectFourEventGroup);
+                xEventGroupWaitBits(
+                    xConnectFourEventGroup, 
+                    EVENT_PASS_TURN_MASK,
+                    pdTRUE,
+                    pdTRUE,
+                    portMAX_DELAY);
 
-                    if ( (event | EVENT_PASS_TURN_MASK) )
-                    {
-                        xEventGroupClearBits(xConnectFourEventGroup, ALL_EVENTS_MASK);
-                        STATE = STATE_P1_TURN;
-                        break;
-                    }
-                }
+                printf("*-- passed wait pb2 --*\n\r");
+                    
+                STATE = STATE_P1_TURN;
+                break;
         }
     }
 }
 
 void task_pole_passturn_pb(void *param)
 {
+    printf("Pole PB entered\n\r");
     /* Suppress warning for unused parameter */
     (void)param;
 
@@ -227,14 +216,17 @@ void task_pole_passturn_pb(void *param)
 
     for( ;; )
     {
+        printf("pb iter\n\r");
         // Wait for the next cycle.
         vTaskDelayUntil( &xLastWakeTime, xFrequency);
+
 
         // Get PB level
         curr_pb_state = cyhal_gpio_read(PIN_PASS_TURN_PB);
 
         if (curr_pb_state == PB_PRESSED && prev_pb_state == PB_NOT_PRESSED)
         {
+            printf("PB pressed\n\r");
             xEventGroupSetBits(xConnectFourEventGroup, EVENT_PASS_TURN_MASK);
         }
         prev_pb_state = curr_pb_state;
@@ -249,27 +241,47 @@ int main(void)
     rslt = cybsp_init();
     CY_ASSERT(CY_RSLT_SUCCESS == rslt);
     __enable_irq();
+    console_init();
+    printf("started\n\r");
 
-    // RGB: 1000hz, 50% duty cycle
-    pwm_init(1000, 50);
+    // RGB: 300hz, 50% duty cycle
+    pwm_init(300, 50);
+
+    mcu_reg_leds_init();
 
     rgb_on(&game_state_led_r, &game_state_led_g, &game_state_led_b, RGB_GREEN);
+
+    // Init PB
+    rslt = cyhal_gpio_init(
+        PIN_PASS_TURN_PB,
+        CYHAL_GPIO_DIR_INPUT,
+        CYHAL_GPIO_DRIVE_NONE,
+        false);
+
+    BaseType_t pole_result = xTaskCreate(
+        task_pole_passturn_pb,
+        "Pole Pass-Turn Push Button",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        3,
+        NULL);
 
     xTaskCreate(
         task_state_manager,
         "State Manager",
         configMINIMAL_STACK_SIZE,
         NULL,
-        1,
+        3,
         NULL);
-    
-    xTaskCreate(
-        task_pole_passturn_pb,
-        "Pole Pass-Turn Push Button",
-        configMINIMAL_STACK_SIZE,
-        NULL,
-        2,
-        NULL);
+
+    if (pole_result == errCOULD_NOT_ALLOCATE_REQUIRED_MEMORY)
+    {
+        printf("error creating poling task\n\r");
+    }
+    else 
+    {
+        printf("successfully created poling task\n\r");
+    }
 
     // Start the scheduler
     vTaskStartScheduler();
