@@ -679,6 +679,13 @@ void task_state_manager(void *param)
                     // Board is valid
                     // TODO: Send current board state over BLE to computer
                     rgb_on(&game_state_led_r, &game_state_led_g, &game_state_led_b, RGB_GREEN);
+
+                    // copy current board state over to previous board state
+                    for (int i = 0; i < BOARD_SIZE; i++)
+                    {
+                        rpi_i2c_response_prev[i] = rpi_i2c_response_curr[i];
+                    }
+
                     STATE = STATE_P2_TURN;
                     break;
                 }
@@ -862,10 +869,27 @@ int main(void)
     rslt = cybsp_init();
     CY_ASSERT(CY_RSLT_SUCCESS == rslt);
     console_init();     // For printing to console
+
+    printf("***************************\n\r");
+    printf("* Initializing Connect 453!\n\r");
+    printf("***************************\n\r");
+
+    printf("* -- Initializing LEDs\n\r");
     mcu_all_leds_init();
+
+    printf("* -- Initializing PBs\n\r");
     mcu_all_pbs_init();
+
+    printf("* -- Initializing I2C\n\r");
     i2c_init();
 
+    printf("* -- Initializing PWM with:\n\r");
+    printf("*       Linear Actuator: 100 khz, 50 percent");
+    printf("*       Servo:           50  hz,   7 percent");
+    printf("*       RGB:             300 hz,  50 percent");
+    pwm_init(100000, 50, 50, 7, 300, 50);
+
+    printf("* -- Enabling IRQ\n\r");
     __enable_irq();
     
     // Turn on ON-OFF LED
