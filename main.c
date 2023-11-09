@@ -22,7 +22,17 @@ int main(void)
     /* Initialize the device and board peripherals */
     rslt = cybsp_init();
     CY_ASSERT(CY_RSLT_SUCCESS == rslt);
+    console_init();
+    printf("* --- PSoC6 INIT successful             --- *\n\r");
     __enable_irq();
+    printf("* --- Enabling IRQ successful           --- *\n\r");
+    
+    // Power LED
+    rslt = cyhal_gpio_init(
+        P5_1,
+        CYHAL_GPIO_DIR_OUTPUT,
+        CYHAL_GPIO_DRIVE_STRONG,
+        true);
 
     // create a task to blink the onboard LED
     xTaskCreate(
@@ -32,6 +42,8 @@ int main(void)
         NULL,
         3,
         NULL);
+    printf("* --- FreeRTOS task creation successful --- *\n\r");
+    printf("* --- Starting scheduler                --- *\n\r");
     // Start the scheduler
     vTaskStartScheduler();
     for (;;)
@@ -45,12 +57,27 @@ void task_blink_led(void *param)
     /* Suppress warning for unused parameter */
     (void)param;
 
-    // Initialize the pin that control the LED
+    
+
+    // Initialize the pins that control the RGB LED
     rslt = cyhal_gpio_init(
         P5_5,
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
         true);
+
+    rslt = cyhal_gpio_init(
+        P5_2,
+        CYHAL_GPIO_DIR_OUTPUT,
+        CYHAL_GPIO_DRIVE_STRONG,
+        true);
+
+    // Initialize the pin that control the LED
+    rslt = cyhal_gpio_init(
+        P9_4,
+        CYHAL_GPIO_DIR_OUTPUT,
+        CYHAL_GPIO_DRIVE_STRONG,
+        false);
 
     if (rslt != CY_RSLT_SUCCESS)
     {
@@ -63,6 +90,6 @@ void task_blink_led(void *param)
     for (;;)
     {
         vTaskDelay(300);
-        cyhal_gpio_toggle(P5_5);
+        cyhal_gpio_toggle(P9_4);
     }
 }
