@@ -80,9 +80,6 @@
 #define PIN_I2C_SCL                 P9_0
 #define PIN_I2C_SDA                 P9_1
 
-extern cyhal_pwm_t lin_fore_pwm_obj;
-extern cyhal_pwm_t lin_back_pwm_obj;
-extern cyhal_pwm_t servo_pwm_obj;
 extern cyhal_pwm_t game_state_led_b;
 extern cyhal_pwm_t game_state_led_r;
 extern cyhal_pwm_t game_state_led_g;
