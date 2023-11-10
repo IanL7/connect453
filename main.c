@@ -64,13 +64,19 @@ void task_blink_led(void *param)
         P5_5,
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
-        true);
+        false);
 
     rslt = cyhal_gpio_init(
         P5_2,
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
-        true);
+        false);
+
+    rslt = cyhal_gpio_init(
+        P5_3,
+        CYHAL_GPIO_DIR_OUTPUT,
+        CYHAL_GPIO_DRIVE_STRONG,
+        false);
 
     // Initialize the pin that control the LED
     rslt = cyhal_gpio_init(
@@ -90,6 +96,16 @@ void task_blink_led(void *param)
     for (;;)
     {
         vTaskDelay(300);
-        cyhal_gpio_toggle(P9_4);
+        cyhal_gpio_write(P5_2, true);
+        cyhal_gpio_write(P5_3, false);
+        cyhal_gpio_write(P5_5, false);
+        vTaskDelay(300);
+        cyhal_gpio_write(P5_2, false);
+        cyhal_gpio_write(P5_3, true);
+        cyhal_gpio_write(P5_5, false);
+        vTaskDelay(300);
+        cyhal_gpio_write(P5_2, false);
+        cyhal_gpio_write(P5_3, false);
+        cyhal_gpio_write(P5_5, true);
     }
 }
