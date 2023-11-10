@@ -21,7 +21,7 @@
 // Plain Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void mcu_startup_sound()
+void mcu_play_sound(uint16_t array[], int array_len)
 {
     // DAC should output 3.3V at max sample value (0xFFFF)
     uint32_t sample;
@@ -37,10 +37,10 @@ void mcu_startup_sound()
     if (dac_result == CY_RSLT_SUCCESS)
     {
         // Play the startup sound
-        for (sample = 0; sample < 34078; sample++)
+        for (sample = 0; sample < array_len; sample++)
         {
             /* Write the 16 bit value as DAC input */
-            cyhal_dac_write(&my_dac_obj, startup[sample]);
+            cyhal_dac_write(&my_dac_obj, array[sample]);
             /* Return the 16 bit DAC register value */
             dac_read = cyhal_dac_read(&my_dac_obj);
             if (dac_read == sample)
@@ -72,7 +72,7 @@ int main(void)
     printf("Playing startup sound\n\r");
 
     // Startup sound
-    mcu_startup_sound();
+    mcu_play_sound(startup, 34078);
 
     printf("Done with startup sound\n\r");
     

@@ -87,6 +87,6 @@ extern cyhal_pwm_t game_state_led_b;
 extern cyhal_pwm_t game_state_led_r;
 extern cyhal_pwm_t game_state_led_g;
 
-extern void rgb_on(cyhal_pwm_t *rgb_obj_r, cyhal_pwm_t *rgb_obj_g, cyhal_pwm_t *rgb_obj_b, int color);
+//extern void rgb_on(cyhal_pwm_t *rgb_obj_r, cyhal_pwm_t *rgb_obj_g, cyhal_pwm_t *rgb_obj_b, int color);
 
 #endif /* MAIN_H_ */
