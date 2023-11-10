@@ -25,7 +25,7 @@ cyhal_pwm_t game_state_led_g;
 /*******************************************************************************
 * Static Global Variables (take away static when we have multiple files)
 ******************************************************************************/
-static EventGroupHandle_t xConnectFourEventGroup;
+EventGroupHandle_t xConnectFourEventGroup;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Plain Functions
@@ -250,6 +250,13 @@ int main(void)
     mcu_reg_leds_init();
 
     rgb_on(&game_state_led_r, &game_state_led_g, &game_state_led_b, RGB_GREEN);
+
+    xConnectFourEventGroup = xEventGroupCreate();
+
+    if (xConnectFourEventGroup == NULL)
+    {
+        printf("Event group not created\n\r");
+    }
 
     // Init PB
     rslt = cyhal_gpio_init(
