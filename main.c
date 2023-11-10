@@ -23,7 +23,7 @@ cyhal_pwm_t servo_pwm_obj;
 // Plain Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void pwm_init(int lin_hz, int lin_duty, int servo_hz, int servo_duty)
+void pwm_init(int lin_hz, int lin_duty)
 {
     cy_rslt_t rslt;
 
@@ -51,11 +51,11 @@ void pwm_init(int lin_hz, int lin_duty, int servo_hz, int servo_duty)
     // Servo (dropper unit)
     /////////////////////////////////////////////////////////////////
     /* Initialize PWM on the supplied pin and assign a new clock */
-    rslt = cyhal_pwm_init(&servo_pwm_obj, P6_3, NULL);
+    //rslt = cyhal_pwm_init(&servo_pwm_obj, P6_3, NULL);
     /* Set duty cycle */
-    rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, servo_duty, servo_hz);
+    //rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, servo_duty, servo_hz);
     /* Stop the PWM output */
-    rslt = cyhal_pwm_stop(&servo_pwm_obj);
+    //rslt = cyhal_pwm_stop(&servo_pwm_obj);
 }
 
 int main(void)
@@ -70,7 +70,7 @@ int main(void)
     console_init();
 
     // SERVO: ?hz, ?% duty cycle
-    pwm_init(?, ?, ?, ?);
+    pwm_init(250000, 50);
 
     // LINEAR ACTUATOR: ?hz ?% duty cycle
 
@@ -112,13 +112,13 @@ int main(void)
     // Servo:
 
     /* Go */
-    rslt = cyhal_pwm_start(&servo_pwm_obj);
+    //rslt = cyhal_pwm_start(&servo_pwm_obj);
 
     /* Delay for observing the output */
-    cyhal_system_delay_ms(5000);
+    //cyhal_system_delay_ms(5000);
 
     /* Stop */
-    rslt = cyhal_pwm_stop(&servo_pwm_obj);
+    //rslt = cyhal_pwm_stop(&servo_pwm_obj);
 
     for (;;)
     {
