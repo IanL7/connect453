@@ -33,7 +33,8 @@
 #define STATE_P1_TURN       2
 #define STATE_P2_TURN       3
 
-#define PIN_PASS_TURN_PB    P10_4
+#define PIN_SERVO           P6_3
+#define PIN_DEPOSIT_PB      P10_4
 #define PIN_PAUSE_PB        P10_2
 #define PIN_PLAYER1_LED     P10_1
 #define PIN_PLAYER2_LED     P9_4
@@ -43,6 +44,6 @@
 #define PB_NOT_PRESSED  true
 
 #define ALL_EVENTS_MASK             0xFFFFFFFF
-#define EVENT_PASS_TURN_MASK        BIT_0
+#define EVENT_DEPOSIT_MASK          BIT_0
 
 #endif /* MAIN_H_ */

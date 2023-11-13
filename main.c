@@ -18,44 +18,86 @@
 cyhal_pwm_t lin_fore_pwm_obj;
 cyhal_pwm_t lin_back_pwm_obj;
 cyhal_pwm_t servo_pwm_obj;
+EventGroupHandle_t xConnectFourEventGroup;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Plain Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void pwm_init(int servo_hz, int servo_duty)
+void pwm_init()
 {
     cy_rslt_t rslt;
 
     /////////////////////////////////////////////////////////////////
-    // Linear Actuator Foreward
-    /////////////////////////////////////////////////////////////////
-    /* Initialize PWM on the supplied pin and assign a new clock */
-    //rslt = cyhal_pwm_init(&lin_fore_pwm_obj, P5_6, NULL);
-    /* Set duty cycle */
-    //rslt = cyhal_pwm_set_duty_cycle(&lin_fore_pwm_obj, lin_duty, lin_hz);
-    /* Stop the PWM output */
-    //rslt = cyhal_pwm_stop(&lin_fore_pwm_obj);
-
-    /////////////////////////////////////////////////////////////////
-    // Linear Actuator Backward
-    /////////////////////////////////////////////////////////////////
-    /* Initialize PWM on the supplied pin and assign a new clock */
-    //rslt = cyhal_pwm_init(&lin_back_pwm_obj, P7_7, NULL);
-    /* Set duty cycle */
-    //rslt = cyhal_pwm_set_duty_cycle(&lin_back_pwm_obj, lin_duty, lin_hz);
-    /* Stop the PWM output */
-    //rslt = cyhal_pwm_stop(&lin_back_pwm_obj);
-    
-    /////////////////////////////////////////////////////////////////
     // Servo (dropper unit)
     /////////////////////////////////////////////////////////////////
     /* Initialize PWM on the supplied pin and assign a new clock */
-    rslt = cyhal_pwm_init(&servo_pwm_obj, P6_3, NULL);
-    /* Set duty cycle */
-    rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, servo_duty, servo_hz);
+    rslt = cyhal_pwm_init(&servo_pwm_obj, PIN_SERVO, NULL);
     /* Stop the PWM output */
     rslt = cyhal_pwm_stop(&servo_pwm_obj);
+}
+
+void task_pole_deposit_pb(void *param)
+{
+    /* Suppress warning for unused parameter */
+    (void)param;
+
+    TickType_t xLastWakeTime;
+
+    // PB check freq is 20ms
+    const TickType_t xFrequency = 20/portTICK_PERIOD_MS;
+
+    bool curr_pb_state = PB_NOT_PRESSED;
+    bool prev_pb_state = PB_NOT_PRESSED;
+
+    // Initialise the xLastWakeTime variable with the current time.
+    xLastWakeTime = xTaskGetTickCount();
+
+    for( ;; )
+    {
+        // Wait for the next cycle.
+        vTaskDelayUntil( &xLastWakeTime, xFrequency);
+
+
+        // Get PB level
+        curr_pb_state = cyhal_gpio_read(PIN_DEPOSIT_PB);
+
+        if (curr_pb_state == PB_PRESSED && prev_pb_state == PB_NOT_PRESSED)
+        {
+            printf("    - PB pressed!\n\r");
+            xEventGroupSetBits(xConnectFourEventGroup, EVENT_DEPOSIT_MASK);
+        }
+        prev_pb_state = curr_pb_state;
+    }
+}
+
+void task_servo_deposit(void *param)
+{
+    /* Suppress warning for unused parameter */
+    (void)param;
+
+    cy_rslt_t rslt = cybsp_init();
+
+    for (;;)
+    {
+        xEventGroupWaitBits(
+            xConnectFourEventGroup, 
+            EVENT_DEPOSIT_MASK,
+            pdTRUE,
+            pdTRUE,
+            portMAX_DELAY);
+
+        printf("Moving to deposit\r\n");
+        rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 5, 50);
+        rslt = cyhal_pwm_start(&servo_pwm_obj);
+        vTaskDelay(2000);
+
+        printf("Moving to retrieve\r\n");
+        rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 12.5, 50);
+        vTaskDelay(2000);
+
+        rslt = cyhal_pwm_stop(&servo_pwm_obj);
+    }
 }
 
 int main(void)
@@ -69,68 +111,36 @@ int main(void)
 
     console_init();
 
-    // SERVO: ?hz, ?% duty cycle
-    pwm_init(50, 12.5);
+    pwm_init();
 
-    // LINEAR ACTUATOR: ?hz ?% duty cycle
+    // Init PB
+    rslt = cyhal_gpio_init(PIN_DEPOSIT_PB, CYHAL_GPIO_DIR_INPUT, CYHAL_GPIO_DRIVE_NONE, false);
 
-    /////////////////////////////////////////////////////////////////
-    // TEST:
-    // 1. Move linear actuator foreward for 5 sec
-    // 2. Wait 5 sec
-    // 3. Move linear actuator backward for 5 sec
-    // 4. Wait 5 sec
-    // 5. Move servo for 5 sec
-    /////////////////////////////////////////////////////////////////
+    xConnectFourEventGroup = xEventGroupCreate();
 
-    // Linear Actuator:
+    if (xConnectFourEventGroup == NULL)
+    {
+        printf("XXX ERROR: Event group not created\n\r");
+    }
 
-    /* Foreward */
-    //rslt = cyhal_pwm_start(&lin_fore_pwm_obj);
+    xTaskCreate(
+        task_pole_deposit_pb,
+        "Pole Pass-Turn Push Button",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        3,
+        NULL);
 
-    /* Delay for observing the output */
-    //cyhal_system_delay_ms(5000);
+    xTaskCreate(
+        task_servo_deposit,
+        "State Manager",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        3,
+        NULL);
 
-    /* Stop */
-    //rslt = cyhal_pwm_stop(&lin_fore_pwm_obj);
-
-    /* Delay for observing the output */
-    //cyhal_system_delay_ms(5000);
-
-    /* Backward */
-    //rslt = cyhal_pwm_start(&lin_back_pwm_obj);
-
-    /* Delay for observing the output */
-    //cyhal_system_delay_ms(5000);
-
-    /* Stop */
-    //rslt = cyhal_pwm_stop(&lin_back_pwm_obj);
-
-    /* Delay for observing the output */
-    cyhal_system_delay_ms(500);
-
-    // Servo:
-
-    /* Go */
-    rslt = cyhal_pwm_start(&servo_pwm_obj);
-
-    printf("starting servo\n\r");
-
-    /* Delay for observing the output */
-    cyhal_system_delay_ms(5000);
-
-    /* Stop */
-    rslt = cyhal_pwm_stop(&servo_pwm_obj);
-
-    pwm_init(50, 7.5);
-
-    rslt = cyhal_pwm_start(&servo_pwm_obj);
-    /* Delay for observing the output */
-    cyhal_system_delay_ms(5000);
-
-    rslt = cyhal_pwm_stop(&servo_pwm_obj);
-
-    printf("stopped servo\n\r");
+    printf("* --- Starting task scheduler                               --- *\n\r");
+    vTaskStartScheduler();
 
     for (;;)
     {
