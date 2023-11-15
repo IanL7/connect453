@@ -40,7 +40,7 @@ void mcu_startup_sound()
         for (sample = 0; sample < 34078; sample++)
         {
             /* Write the 16 bit value as DAC input */
-            cyhal_dac_write(&my_dac_obj, startup[sample]);
+            cyhal_dac_write(&my_dac_obj, 0xFF * startup[sample]);
             /* Return the 16 bit DAC register value */
             dac_read = cyhal_dac_read(&my_dac_obj);
             if (dac_read == sample)
