@@ -48,7 +48,7 @@ void mcu_startup_sound()
                 /* Insert code */
             }
             // TODO: is this enough? Do I need a timer instead?
-            // Delay for ~1/24000ths of a second, (sample rate of audio array is 24khz)
+            // Delay for ~1/8000ths of a second, (sample rate of audio array is 8khz)
             cyhal_system_delay_us(125);
         }
     }
