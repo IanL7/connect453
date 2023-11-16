@@ -696,13 +696,17 @@ void task_state_manager(void *param)
                 cyhal_gpio_write(PIN_PLAYER2_LED, false);
                 cyhal_gpio_write(PIN_PLAYER1_LED, true);
 
-                // TODO: Wait for P2 move from computer over BLE
+                // Increment ble characteristic so gui can update
+
+                // Wait for P2 move from computer over BLE
                 xEventGroupWaitBits(
                         xSMEventGroup, 
                         EVENT_P2_MOVE_RECEIVED_MASK,
                         pdTRUE,
                         pdTRUE,
                         portMAX_DELAY);
+
+                // start task to move dropper and deposit piece
 
             case STATE_PLAYER1_WIN:
                 vTaskSuspend(clear_dropper_handle);
