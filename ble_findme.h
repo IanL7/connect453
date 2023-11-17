@@ -49,9 +49,19 @@
 /******************************************************************************
  * Function prototypes
  *****************************************************************************/
+#include "stdbool.h"
+#include "ble_findme.h"
+#include "cyhal.h"
+#include "cy_retarget_io.h"
+#include "cybsp.h"
+#include "cycfg_ble.h"
+#include "main.h"
+
 void ble_findme_init(void);
 void ble_findme_process(void);
 
+extern uint8_t rpi_i2c_response_curr[BOARD_SIZE];
+extern bool brd_rdy;
 
 #endif  /* BLE_FIND_ME_H */
 

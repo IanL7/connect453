@@ -1,11 +1,12 @@
-#include "cy_pdl.h"
-#include "cyhal.h"
-#include "cybsp.h"
+
 #include "main.h"
-#include <stdint.h>
-#include <stdio.h>
-#include <stdbool.h>
+#include "cy_pdl.h"
+#include "cy_retarget_io.h"
+#include "cybsp.h"
+#include "cyhal.h"
+#include "ble_findme.h"
 #include "audio.h"
+
 /* RTOS header files */
 #include <FreeRTOS.h>
 #include <FreeRTOSConfig.h>
@@ -20,6 +21,9 @@ EventGroupHandle_t xConnectFourEventGroup;
 cyhal_pwm_t game_state_led_b;
 cyhal_pwm_t game_state_led_r;
 cyhal_pwm_t game_state_led_g;
+
+uint8_t rpi_i2c_response_curr[BOARD_SIZE];
+bool brd_rdy;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Plain Functions
@@ -278,6 +282,17 @@ void task_pole_passturn_pb(void *param)
     }
 }
 
+void task_ble_process(void *param)
+{
+    /* Suppress warning for unused parameter */
+    (void)param;
+    printf("entered ble task\n\r");
+    for (;;)
+    {
+        vTaskDelay(10);
+        ble_findme_process();
+    }
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Entry point - init, power led, startup sound, start schedular
@@ -292,16 +307,18 @@ int main(void)
     CY_ASSERT(CY_RSLT_SUCCESS == rslt);
     console_init();     // For printing to console
 
+    ble_findme_init();
+
     printf("* ------------------------------------------------------------- *\n\r");
     printf("* --- Starting Connect453 Custom MCU Board Week 10 Demo     --- *\n\r");
     printf("* ------------------------------------------------------------- *\n\r");
     printf("\n\r");
 
-    printf("* --- Initializing PWM                                      --- *\n\r");
-    pwm_init(300, 50);
+    //pwm_init(300, 50);
 
     printf("* --- Initializing LEDs                                     --- *\n\r");
     mcu_reg_leds_init();
+    cyhal_gpio_init(PIN_GAME_STATE_LED_B, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
 
     printf("* --- Initializing Push Button                              --- *\n\r");
     rslt = cyhal_gpio_init(
@@ -323,6 +340,11 @@ int main(void)
         printf("XXX ERROR: Event group not created\n\r");
     }
 
+    for (uint8_t i = 0; i < BOARD_SIZE; i++)
+    {
+        rpi_i2c_response_curr[i] = i;
+    }
+
     xTaskCreate(
         task_pole_passturn_pb,
         "Pole Pass-Turn Push Button",
@@ -337,6 +359,14 @@ int main(void)
         configMINIMAL_STACK_SIZE,
         NULL,
         3,
+        NULL);
+
+    xTaskCreate(
+        task_ble_process,
+        "BLE Process",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        2,
         NULL);
 
     printf("* --- Starting task scheduler                               --- *\n\r");

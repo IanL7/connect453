@@ -8,14 +8,6 @@
 #ifndef MAIN_H_
 #define MAIN_H_
 
-#include "drivers/leds.h"
-#include "drivers/push_button.h"
-#include "drivers/console.h"
-#include "drivers/i2c.h"
-#include "drivers/eeprom.h"
-//#include "drivers/io_expander.h"
-#include "drivers/LM75.h"
-
 // Board stuff
 #define BOARD_WIDTH                 7
 #define BOARD_HEIGHT                6
@@ -79,10 +71,6 @@
 #define PIN_WINNER_LED_B            P10_2
 #define PIN_I2C_SCL                 P9_0
 #define PIN_I2C_SDA                 P9_1
-
-extern cyhal_pwm_t game_state_led_b;
-extern cyhal_pwm_t game_state_led_r;
-extern cyhal_pwm_t game_state_led_g;
 
 //extern void rgb_on(cyhal_pwm_t *rgb_obj_r, cyhal_pwm_t *rgb_obj_g, cyhal_pwm_t *rgb_obj_b, int color);
 

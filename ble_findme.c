@@ -43,11 +43,6 @@
  * Include header files
  *****************************************************************************/
 #include "ble_findme.h"
-#include "cyhal.h"
-#include "cy_retarget_io.h"
-#include "cybsp.h"
-#include "cycfg_ble.h"
-#include "main.h"
 
 /*******************************************************************************
 * Macros
@@ -70,8 +65,6 @@ uint8 alert_level = CY_BLE_NO_ALERT;
 cy_stc_ble_conn_handle_t app_conn_handle;
 cy_stc_ble_gatt_write_param_t *write_req_param;
 cy_stc_ble_gatts_char_val_read_req_t *read_req_param;
-uint8_t BTN_COUNT = 0;
-
 
 /*******************************************************************************
 * Function Prototypes
@@ -119,7 +112,7 @@ void ble_findme_process(void)
     /* Enter low power mode. The call to enter_low_power_mode also causes the
      * device to enter hibernate mode if the BLE stack is shutdown.
      */
-    enter_low_power_mode();
+    //enter_low_power_mode();
 
     /* Cy_BLE_ProcessEvents() allows the BLE stack to process pending events */
     Cy_BLE_ProcessEvents();
@@ -131,15 +124,15 @@ void ble_findme_process(void)
         /* Update ECE453_USR_LED to indicate current BLE status */
         if(CY_BLE_ADV_STATE_ADVERTISING == Cy_BLE_GetAdvertisementState())
         {
-            cyhal_gpio_toggle((cyhal_gpio_t)ECE453_USR_LED);
+            cyhal_gpio_toggle((cyhal_gpio_t)PIN_GAME_STATE_LED_B);
         }
         else if(CY_BLE_CONN_STATE_CONNECTED == Cy_BLE_GetConnectionState(app_conn_handle))
         {
-            cyhal_gpio_write((cyhal_gpio_t)ECE453_USR_LED, CYBSP_LED_STATE_ON);
+            cyhal_gpio_write((cyhal_gpio_t)PIN_GAME_STATE_LED_B, CYBSP_LED_STATE_ON);
         }
         else
         {
-            cyhal_gpio_write((cyhal_gpio_t)ECE453_USR_LED, CYBSP_LED_STATE_OFF);
+            cyhal_gpio_write((cyhal_gpio_t)PIN_GAME_STATE_LED_B, CYBSP_LED_STATE_OFF);
         }
 
         /* Update CYBSP_USER_LED2 to indicate current alert level */
@@ -397,23 +390,32 @@ static void stack_event_handler(uint32_t event, void* eventParam)
             printf("[INFO] : GATT read characteristic request received \r\n");
             read_req_param = (cy_stc_ble_gatts_char_val_read_req_t *)eventParam;
 
-            if (CY_BLE_BUTTONS_USR_BTN_CHAR_HANDLE == read_req_param->attrHandle)
+            if (CY_BLE_BOARD_USR_BRD_CHAR_HANDLE == read_req_param->attrHandle)
             {
-            	printf("[INFO] : trying to read from USR_BTN characteristic\r\n");
+            	printf("[INFO] : trying to read from USR_BRD characteristic\r\n");
 
-            	CY_BLE_GATT_DB_ATTR_SET_GEN_VALUE(CY_BLE_BUTTONS_USR_BTN_CHAR_HANDLE,&BTN_COUNT,1);
+            	CY_BLE_GATT_DB_ATTR_SET_GEN_VALUE(CY_BLE_BOARD_USR_BRD_CHAR_HANDLE,&rpi_i2c_response_curr,42);
 
-                printf("[INFO] : BTN_COUNT %d\r\n", BTN_COUNT);
+                //printf("[INFO] : BTN_COUNT %d\r\n", BTN_COUNT);
             }
+            /*
+            else if (CY_BLE_P2MOVERDY_USR_P2MOVE_RDY_CHAR_HANDLE == read_req_param->attrHandle)
+            {
+            	printf("[INFO] : trying to read from USR_P2MOVE_RDY characteristic\r\n");
+
+            	CY_BLE_GATT_DB_ATTR_SET_GEN_VALUE(CY_BLE_P2MOVERDY_USR_P2MOVE_RDY_CHAR_HANDLE,&brd_rdy,1);
+
+                //printf("[INFO] : BTN_COUNT %d\r\n", BTN_COUNT);
+            }
+            */
 
             break;
         }
         case CY_BLE_EVT_GATTS_WRITE_CMD_REQ:
         		{
-
         			write_req_param = (cy_stc_ble_gatt_write_param_t*)eventParam;
 
-        			if( CY_BLE_LEDS_USR_LED_CHAR_HANDLE == write_req_param->handleValPair.attrHandle)
+        			if( CY_BLE_P2MOVEVAL_USR_P2MOVE_VAL_CHAR_HANDLE == write_req_param->handleValPair.attrHandle)
         			{
 
         				printf("[INFO] : GATT write USR_LED characteristic with value: 0x%x\r\n", write_req_param->handleValPair.value.val[0]);
@@ -543,7 +545,7 @@ static void enter_low_power_mode(void)
         printf("[INFO] : Entering hibernate mode\r\n");
 
         /* Turn of user LEDs */
-        cyhal_gpio_write((cyhal_gpio_t)ECE453_USR_LED, CYBSP_LED_STATE_OFF);
+        cyhal_gpio_write((cyhal_gpio_t)PIN_GAME_STATE_LED_B, CYBSP_LED_STATE_OFF);
         //cyhal_gpio_write((cyhal_gpio_t)CYBSP_USER_LED2, CYBSP_LED_STATE_OFF);
 
         /* Wait until UART transfer complete  */
