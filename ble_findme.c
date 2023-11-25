@@ -112,7 +112,7 @@ void ble_findme_process(void)
     /* Enter low power mode. The call to enter_low_power_mode also causes the
      * device to enter hibernate mode if the BLE stack is shutdown.
      */
-    //enter_low_power_mode();
+    enter_low_power_mode(); // Ian - seems to currently cause psoc6 to reset when goes in low power mode (need to maintain ble connection)
 
     /* Cy_BLE_ProcessEvents() allows the BLE stack to process pending events */
     Cy_BLE_ProcessEvents();
@@ -413,12 +413,15 @@ static void stack_event_handler(uint32_t event, void* eventParam)
         }
         case CY_BLE_EVT_GATTS_WRITE_CMD_REQ:
         		{
+                    cyhal_gpio_write((cyhal_gpio_t)PIN_GAME_STATE_LED_G, CYBSP_LED_STATE_ON);
         			write_req_param = (cy_stc_ble_gatt_write_param_t*)eventParam;
+
+                    
 
         			if( CY_BLE_P2MOVEVAL_USR_P2MOVE_VAL_CHAR_HANDLE == write_req_param->handleValPair.attrHandle)
         			{
 
-        				printf("[INFO] : GATT write USR_LED characteristic with value: 0x%x\r\n", write_req_param->handleValPair.value.val[0]);
+        			    //printf("[INFO] : GATT write USR_P2MOVE_VAL characteristic with value: 0x%x\r\n", write_req_param->handleValPair.value.val[0]);
 
         			}
         			break;

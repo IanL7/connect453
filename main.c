@@ -286,10 +286,10 @@ void task_ble_process(void *param)
 {
     /* Suppress warning for unused parameter */
     (void)param;
-    printf("entered ble task\n\r");
+
     for (;;)
     {
-        vTaskDelay(10);
+        //vTaskDelay(10);
         ble_findme_process();
     }
 }
@@ -306,8 +306,6 @@ int main(void)
     rslt = cybsp_init();
     CY_ASSERT(CY_RSLT_SUCCESS == rslt);
     console_init();     // For printing to console
-
-    ble_findme_init();
 
     printf("* ------------------------------------------------------------- *\n\r");
     printf("* --- Starting Connect453 Custom MCU Board Week 10 Demo     --- *\n\r");
@@ -345,6 +343,7 @@ int main(void)
         rpi_i2c_response_curr[i] = i;
     }
 
+    /*
     xTaskCreate(
         task_pole_passturn_pb,
         "Pole Pass-Turn Push Button",
@@ -360,16 +359,20 @@ int main(void)
         NULL,
         3,
         NULL);
+    */
 
     xTaskCreate(
         task_ble_process,
         "BLE Process",
-        configMINIMAL_STACK_SIZE,
+        210,
         NULL,
-        2,
+        1,
         NULL);
 
     printf("* --- Starting task scheduler                               --- *\n\r");
+
+    ble_findme_init();
+
     vTaskStartScheduler();
 
     for (;;)
