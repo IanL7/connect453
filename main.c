@@ -1,10 +1,9 @@
-
-#include "main.h"
 #include "cy_pdl.h"
 #include "cy_retarget_io.h"
 #include "cybsp.h"
 #include "cyhal.h"
 #include "ble_findme.h"
+#include "main.h"
 #include "audio.h"
 
 /* RTOS header files */

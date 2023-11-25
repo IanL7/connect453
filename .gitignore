@@ -18,8 +18,6 @@ libs/
 # .project
 # .mtbLaunchConfigs/
 
-# ModusToolbox Configurator generated code
-GeneratedSource/
 
 # ModusToolbox build system output
 build/

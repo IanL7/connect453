@@ -43,6 +43,11 @@
  * Include header files
  *****************************************************************************/
 #include "ble_findme.h"
+#include "cyhal.h"
+#include "cy_retarget_io.h"
+#include "cybsp.h"
+#include "cycfg_ble.h"
+#include "main.h"
 
 /*******************************************************************************
 * Macros
@@ -421,7 +426,7 @@ static void stack_event_handler(uint32_t event, void* eventParam)
         			if( CY_BLE_P2MOVEVAL_USR_P2MOVE_VAL_CHAR_HANDLE == write_req_param->handleValPair.attrHandle)
         			{
 
-        			    //printf("[INFO] : GATT write USR_P2MOVE_VAL characteristic with value: 0x%x\r\n", write_req_param->handleValPair.value.val[0]);
+        			    printf("[INFO] : GATT write USR_P2MOVE_VAL characteristic with value: 0x%x\r\n", write_req_param->handleValPair.value.val[0]);
 
         			}
         			break;

@@ -49,13 +49,9 @@
 /******************************************************************************
  * Function prototypes
  *****************************************************************************/
-#include "stdbool.h"
-#include "ble_findme.h"
-#include "cyhal.h"
-#include "cy_retarget_io.h"
-#include "cybsp.h"
-#include "cycfg_ble.h"
 #include "main.h"
+#include "stdbool.h"
+#include "stdint.h"
 
 void ble_findme_init(void);
 void ble_findme_process(void);
