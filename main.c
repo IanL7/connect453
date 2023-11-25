@@ -56,6 +56,8 @@ void mcu_startup_sound()
     cyhal_dac_free(&my_dac_obj);
 }
 
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Entry point - init, power led, startup sound, start schedular
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,7 +74,19 @@ int main(void)
     printf("Playing startup sound\n\r");
 
     // Startup sound
-    mcu_startup_sound();
+    //mcu_startup_sound();
+    cyhal_pwm_t pwm_obj;
+    /* Initialize PWM on the supplied pin and assign a new clock */
+    rslt = cyhal_pwm_init(&pwm_obj, P9_6, NULL);
+    /* Set a duty cycle of 50% and frequency of 1Hz */
+    rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 600);
+    /* Start the PWM output */
+    rslt = cyhal_pwm_start(&pwm_obj);
+
+    cyhal_system_delay_ms(10000);
+
+    rslt = cyhal_pwm_stop(&pwm_obj);
+
 
     printf("Done with startup sound\n\r");
     
