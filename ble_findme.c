@@ -49,6 +49,13 @@
 #include "cycfg_ble.h"
 #include "main.h"
 
+/* RTOS header files */
+#include <FreeRTOS.h>
+#include <FreeRTOSConfig.h>
+#include <task.h>
+#include <semphr.h>
+#include <event_groups.h>
+
 /*******************************************************************************
 * Macros
 ********************************************************************************/
@@ -117,7 +124,7 @@ void ble_findme_process(void)
     /* Enter low power mode. The call to enter_low_power_mode also causes the
      * device to enter hibernate mode if the BLE stack is shutdown.
      */
-    enter_low_power_mode(); // Ian - seems to currently cause psoc6 to reset when goes in low power mode (need to maintain ble connection)
+    //enter_low_power_mode(); // Ian - seems to currently cause psoc6 to reset when goes in low power mode (need to maintain ble connection)
 
     /* Cy_BLE_ProcessEvents() allows the BLE stack to process pending events */
     Cy_BLE_ProcessEvents();
@@ -164,6 +171,7 @@ void ble_findme_process(void)
             }
         }
     }
+    vTaskDelay(10);
 }
 
 

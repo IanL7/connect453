@@ -15,6 +15,8 @@
 
 // NOTE: PLAYER 1 ASSUMED TO BE YELLOW!
 // NOTE: PLAYER 2 ASSUMED TO BE BLUE!
+TaskHandle_t xSMHandle = NULL;
+TaskHandle_t xPPBHandle = NULL;
 
 EventGroupHandle_t xConnectFourEventGroup;
 cyhal_pwm_t game_state_led_b;
@@ -288,7 +290,7 @@ void task_ble_process(void *param)
 
     for (;;)
     {
-        //vTaskDelay(10);
+        vTaskDelay(10);
         ble_findme_process();
     }
 }
@@ -342,23 +344,22 @@ int main(void)
         rpi_i2c_response_curr[i] = i;
     }
 
-    /*
+    
     xTaskCreate(
         task_pole_passturn_pb,
         "Pole Pass-Turn Push Button",
         configMINIMAL_STACK_SIZE,
         NULL,
         3,
-        NULL);
-
+        &xPPBHandle);
+    
     xTaskCreate(
         task_state_manager,
         "State Manager",
         configMINIMAL_STACK_SIZE,
         NULL,
         3,
-        NULL);
-    */
+        &xSMHandle);
 
     xTaskCreate(
         task_ble_process,
