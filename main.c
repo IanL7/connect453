@@ -59,6 +59,8 @@ int main(void)
 
     console_init();
 
+    pwm_init(1000, 75);
+
     // LINEAR ACTUATOR: ?hz ?% duty cycle
 
     /////////////////////////////////////////////////////////////////
@@ -72,34 +74,38 @@ int main(void)
 
     // Linear Actuator:
 
-    rslt = cyhal_gpio_init(P5_6, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-    rslt = cyhal_gpio_init(P7_7, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
+    //rslt = cyhal_gpio_init(P5_6, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
+    //rslt = cyhal_gpio_init(P7_7, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
     /* Write the value to the output pin */
 
     /* Foreward */
-    printf("Foreward\n\r");
-    cyhal_gpio_write(P5_6, 1);
+    printf("Backward\n\r");
+    cyhal_pwm_start(&lin_back_pwm_obj);
+    //cyhal_gpio_write(P5_6, 1);
 
     /* Delay for observing the output */
     cyhal_system_delay_ms(5000);
 
     /* Stop */
+    cyhal_pwm_stop(&lin_back_pwm_obj);
     printf("Stop\n\r");
-    cyhal_gpio_write(P7_7, 1);
+    //cyhal_gpio_write(P7_7, 1);
 
     /* Delay for observing the output */
     cyhal_system_delay_ms(5000);
 
     /* Backward */
-    printf("Backward\n\r");
-    cyhal_gpio_write(P5_6, 0);
+    printf("Forward\n\r");
+    cyhal_pwm_start(&lin_fore_pwm_obj);
+    //cyhal_gpio_write(P5_6, 0);
 
     /* Delay for observing the output */
     cyhal_system_delay_ms(5000);
 
     /* Stop */
+    cyhal_pwm_stop(&lin_fore_pwm_obj);
     printf("Stop\n\r");
-    cyhal_gpio_write(P5_6, 1);
+    //cyhal_gpio_write(P5_6, 1);
 
     /* Delay for observing the output */
     cyhal_system_delay_ms(500);
