@@ -290,7 +290,7 @@ void task_ble_process(void *param)
 
     for (;;)
     {
-        vTaskDelay(10);
+        //vTaskDelay(10);
         ble_findme_process();
     }
 }
@@ -313,7 +313,7 @@ int main(void)
     printf("* ------------------------------------------------------------- *\n\r");
     printf("\n\r");
 
-    //pwm_init(300, 50);
+    
 
     printf("* --- Initializing LEDs                                     --- *\n\r");
     mcu_reg_leds_init();
@@ -330,7 +330,20 @@ int main(void)
     cyhal_gpio_write(PIN_ONOFF_LED, true);
 
     printf("* --- Playing startup sound                                 --- *\n\r");
-    mcu_play_sound(startup, 34078);
+    
+    cyhal_pwm_t pwm_obj;
+    /* Initialize PWM on the supplied pin and assign a new clock */
+    rslt = cyhal_pwm_init(&pwm_obj, P9_6, NULL);
+    /* Set a duty cycle of 50% and frequency of 1Hz */
+    rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 440);
+    /* Start the PWM output */
+    rslt = cyhal_pwm_start(&pwm_obj);
+    cyhal_system_delay_ms(500);
+    rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 523);
+    cyhal_system_delay_ms(500);
+    rslt = cyhal_pwm_stop(&pwm_obj);
+
+    printf("* --- Done with startup sound                                 --- *\n\r");
 
     xConnectFourEventGroup = xEventGroupCreate();
 
@@ -344,7 +357,7 @@ int main(void)
         rpi_i2c_response_curr[i] = i;
     }
 
-    
+    /*
     xTaskCreate(
         task_pole_passturn_pb,
         "Pole Pass-Turn Push Button",
@@ -352,7 +365,9 @@ int main(void)
         NULL,
         3,
         &xPPBHandle);
-    
+    */
+
+    /*
     xTaskCreate(
         task_state_manager,
         "State Manager",
@@ -360,6 +375,7 @@ int main(void)
         NULL,
         3,
         &xSMHandle);
+    */
 
     xTaskCreate(
         task_ble_process,
