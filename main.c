@@ -354,7 +354,7 @@ int main(void)
 
     for (uint8_t i = 0; i < BOARD_SIZE; i++)
     {
-        rpi_i2c_response_curr[i] = i;
+        rpi_i2c_response_curr[i] = i % 3;
     }
 
     /*
