@@ -5,6 +5,8 @@
 #include "ble_findme.h"
 #include "main.h"
 #include "audio.h"
+#include "cybsp_types.h"
+#include "ble_task.h"
 
 /* RTOS header files */
 #include <FreeRTOS.h>
@@ -25,6 +27,12 @@ cyhal_pwm_t game_state_led_g;
 
 uint8_t rpi_i2c_response_curr[BOARD_SIZE];
 bool brd_rdy;
+
+#define BLE_TASK_STACK_SIZE     (configMINIMAL_STACK_SIZE * 4)
+#define BLE_CMD_Q_LEN           (10u)
+
+TaskHandle_t ble_task_handle;
+QueueHandle_t ble_cmdQ;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Plain Functions
@@ -283,18 +291,6 @@ void task_pole_passturn_pb(void *param)
     }
 }
 
-void task_ble_process(void *param)
-{
-    /* Suppress warning for unused parameter */
-    (void)param;
-
-    for (;;)
-    {
-        //vTaskDelay(10);
-        ble_findme_process();
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Entry point - init, power led, startup sound, start schedular
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -357,6 +353,8 @@ int main(void)
         rpi_i2c_response_curr[i] = i % 3;
     }
 
+    ble_cmdQ = xQueueCreate(BLE_CMD_Q_LEN, sizeof(uint8_t));
+
     /*
     xTaskCreate(
         task_pole_passturn_pb,
@@ -378,9 +376,9 @@ int main(void)
     */
 
     xTaskCreate(
-        task_ble_process,
+        task_BLE,
         "BLE Process",
-        210,
+        BLE_TASK_STACK_SIZE,
         NULL,
         1,
         NULL);
