@@ -7,7 +7,6 @@
 #include "cybsp_types.h"
 #include "ble_task.h"
 #include "light_sensor_task.h"
-#include "cycfg_ble.h"
 
 /* RTOS header files */
 #include <FreeRTOS.h>
