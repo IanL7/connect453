@@ -3,7 +3,6 @@
 
 #include <stdint.h>
 
-extern uint16_t startup[34078];
-extern uint16_t begin[35278];
+extern uint16_t error_sound[16344];
 
 #endif /* AUDIO_H_ */

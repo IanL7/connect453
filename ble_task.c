@@ -69,6 +69,9 @@
 /******************************************************************************
  * Global Variables
  *****************************************************************************/
+/* Connection handle to identify the connected peer device */
+static cy_stc_ble_conn_handle_t conn_handle;
+
 /* Variables to hold GATT notification byte count or GATT write byte count */
 static uint32_t gatt_write_rx_bytes;
 static uint32_t notif_tx_bytes;
@@ -89,9 +92,6 @@ throughput_val_t server_throughput = {0u, 0u};
 
 /* Variable to store connection parameters after GAP connection */
 static cy_stc_ble_gap_connected_param_t conn_param;
-
-/* Connection handle to identify the connected peer device */
-static cy_stc_ble_conn_handle_t conn_handle;
 
 /* Pointer to store a single attribute information present in the GATT DB of the server */
 static cy_stc_ble_gatt_write_param_t *write_req_param;
@@ -211,7 +211,7 @@ static void ble_init(void)
         /* BLE stack initialization failed, check configuration, notify error
          * and halt CPU in debug mode
          */
-        printf("Cy_BLE_Init API, errorcode: 0x%X", ble_api_result);
+        printf("Cy_BLE_Init API, errorcode: 0x%X \n\r", ble_api_result);
         vTaskSuspend(NULL);
     }
 
@@ -222,7 +222,7 @@ static void ble_init(void)
         /* BLE stack initialization failed, check configuration, notify error
          * and halt CPU in debug mode
          */
-        printf("Cy_BLE_Enable API errorcode: 0x%X ", ble_api_result);
+        printf("Cy_BLE_Enable API errorcode: 0x%X \n\r", ble_api_result);
         vTaskSuspend(NULL);
     }
     /* Process BLE events after enabling BLE */
@@ -244,8 +244,9 @@ static void ble_init(void)
 *******************************************************************************/
 static void ble_stack_event_handler (uint32_t event, void *eventParam)
 {
-    /* Variable used to store the return values of BLE APIs */
+    /* Variable used to store the return values of BLE and FreeRTOS APIs */
     cy_en_ble_api_result_t ble_api_result;
+    BaseType_t rtos_api_result;
 
     /* Take an action based on the current event */
     switch(event)
@@ -256,16 +257,16 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
         /* This event is received when the BLE stack is Started */
         case CY_BLE_EVT_STACK_ON:
         {
-            printf("BLE Stack Event : CY_BLE_EVT_STACK_ON");
+            printf("BLE Stack Event : CY_BLE_EVT_STACK_ON \n\r");
             /* Start Advertisement and enter discoverable mode */
             ble_api_result = Cy_BLE_GAPP_StartAdvertisement(CY_BLE_ADVERTISING_FAST, CY_BLE_PERIPHERAL_CONFIGURATION_0_INDEX);
             if(ble_api_result == CY_BLE_SUCCESS)
             {
-                printf("BLE Advertisement started successfully");
+                printf("BLE Advertisement started successfully \n\r");
             }
             else
             {
-                printf("BLE Advertisement API, errorcode = 0x%X", ble_api_result);
+                printf("BLE Advertisement API, errorcode = 0x%X \n\r", ble_api_result);
             }
             break;
         }
@@ -295,7 +296,7 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
         /* This event is received when there is a timeout */
         case CY_BLE_EVT_TIMEOUT:
         {
-            printf("BLE Stack Event - Event timeout");
+            printf("BLE Stack Event - Event timeout \n\r");
             break;
         }
 
@@ -308,7 +309,7 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
         case CY_BLE_EVT_GAPP_ADVERTISEMENT_START_STOP:
         {
             cy_en_ble_adv_state_t adv_state;
-            printf("BLE Stack Event : CY_BLE_EVT_GAPP_ADVERTISEMENT_START_STOP");
+            printf("BLE Stack Event : CY_BLE_EVT_GAPP_ADVERTISEMENT_START_STOP \n\r");
             adv_state = Cy_BLE_GetAdvertisementState();
             if(adv_state == CY_BLE_ADV_STATE_ADVERTISING)
             {
@@ -493,17 +494,33 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
          * Client device */
         case CY_BLE_EVT_GATTS_WRITE_REQ:
         {
+            BaseType_t xHigherPriorityTaskWoken;
+            /* We have not woken a task at the start of the ISR. */
+            xHigherPriorityTaskWoken = pdFALSE;
+
             printf("BLE Stack Event : CY_BLE_EVT_GATTS_WRITE_REQ");
             write_req_param = (cy_stc_ble_gatt_write_param_t*)eventParam;
+            uint8_t p2_move = write_req_param->handleValPair.value.val[0];
 
-            printf("[INFO] : GATT write USR_P2MOVE_VAL characteristic with value: 0x%x\r\n", write_req_param->handleValPair.value.val[0]);
+            printf("[INFO] : GATT write USR_P2MOVE_VAL characteristic with value: 0x%x\r\n", p2_move);
 
             /* Clear both tx and rx data bytes count */
             gatt_write_rx_bytes = 0u;
             notif_tx_bytes = 0u;
+            
+            // Send P2 move value to queue //
+            rtos_api_result = xQueueSendToBackFromISR(xPieceQueue, &p2_move, &xHigherPriorityTaskWoken);
 
-            /* Send response to GATT Client device */
-            Cy_BLE_GATTS_WriteRsp(conn_handle);
+            if (rtos_api_result != pdPASS)
+            {
+                printf("ERROR: Piece queue was full when received move from ble\n\r");
+            }
+
+            /* We can switch context if necessary. */
+            if( xHigherPriorityTaskWoken )
+            {
+                portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+            }
             break;
         }
 
@@ -511,8 +528,8 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
          * client device */
         case CY_BLE_EVT_GATTS_WRITE_CMD_REQ:
         {
-            write_req_param = (cy_stc_ble_gatt_write_param_t*)eventParam;
-            printf("[INFO] : GATT write USR_P2MOVE_VAL characteristic with value: 0x%x\r\n", write_req_param->handleValPair.value.val[0]);
+            // write_req_param = (cy_stc_ble_gatt_write_param_t*)eventParam;
+            // printf("[INFO] : GATT write CMD USR_P2MOVE_VAL characteristic with value: 0x%x\r\n", write_req_param->handleValPair.value.val[0]);
 
             break;
         }
@@ -528,7 +545,7 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
             {
             	printf("[INFO] : trying to read from USR_BRD characteristic\r\n");
 
-            	CY_BLE_GATT_DB_ATTR_SET_GEN_VALUE(CY_BLE_BOARD_USR_BRD_CHAR_HANDLE,&rpi_i2c_response_curr,42);
+            	CY_BLE_GATT_DB_ATTR_SET_GEN_VALUE(CY_BLE_BOARD_USR_BRD_CHAR_HANDLE,&board_state_curr,42);
             }
             break;
         }
@@ -664,6 +681,12 @@ void rtos_timer_cb(TimerHandle_t timer_handle)
     gatt_write_rx_bytes = 0u;
     printf("GATT WRITE:        Server Throughput Rx= %lu kbps\r\n", server_throughput.rx);
     }
+}
+
+void ble_write_response()
+{
+    printf("sending write response\n\r");
+    Cy_BLE_GATTS_WriteRsp(conn_handle);
 }
 
 /* [] END OF FILE */

@@ -6,6 +6,8 @@
 #include "audio.h"
 #include "cybsp_types.h"
 #include "ble_task.h"
+#include "light_sensor_task.h"
+#include "cycfg_ble.h"
 
 /* RTOS header files */
 #include <FreeRTOS.h>
@@ -20,60 +22,78 @@ TaskHandle_t xSMHandle = NULL;
 TaskHandle_t xPPBHandle = NULL;
 
 EventGroupHandle_t xConnectFourEventGroup;
-cyhal_pwm_t game_state_led_b;
-cyhal_pwm_t game_state_led_r;
-cyhal_pwm_t game_state_led_g;
 
-uint8_t rpi_i2c_response_curr[BOARD_SIZE];
+uint8_t board_state_curr[BOARD_SIZE];
 bool brd_rdy;
 
-#define BLE_TASK_STACK_SIZE     (configMINIMAL_STACK_SIZE * 4)
-#define BLE_CMD_Q_LEN           (10u)
-
+TimerHandle_t timer_handle;
 TaskHandle_t ble_task_handle;
 QueueHandle_t ble_cmdQ;
-TimerHandle_t timer_handle;
+QueueHandle_t xLightQueue;
+QueueHandle_t xPieceQueue;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Plain Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void mcu_play_sound(uint16_t array[], int array_len)
+void play_sound(int sound)
 {
-    // DAC should output 3.3V at max sample value (0xFFFF)
     uint32_t sample;
-
+    cy_rslt_t rslt;
+    cyhal_pwm_t pwm_obj;
     cyhal_dac_t my_dac_obj;
     cy_rslt_t dac_result;
-    uint16_t dac_read;
 
-    /* Initialize DAC, set Pin 9[6] as the DAC output */
-    dac_result = cyhal_dac_init(&my_dac_obj, P9_6);
-
-    /* Check the return of cyhal_dac_init to confirm initialization was successful */
-    if (dac_result == CY_RSLT_SUCCESS)
+    switch (sound)
     {
-        // Play the startup sound
-        for (sample = 0; sample < array_len; sample++)
-        {
-            /* Write the 16 bit value as DAC input */
-            cyhal_dac_write(&my_dac_obj, array[sample]);
-            /* Return the 16 bit DAC register value */
-            dac_read = cyhal_dac_read(&my_dac_obj);
-            if (dac_read == sample)
+        case SOUND_STARTUP:
+            /* Initialize PWM on the supplied pin and assign a new clock */
+            rslt = cyhal_pwm_init(&pwm_obj, P9_6, NULL);
+            rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 440);
+            /* Start the PWM output */
+            rslt = cyhal_pwm_start(&pwm_obj);
+            cyhal_system_delay_ms(500);
+            rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 523);
+            cyhal_system_delay_ms(500);
+            rslt = cyhal_pwm_stop(&pwm_obj);
+            cyhal_pwm_free(&pwm_obj);
+            break;
+
+        case SOUND_BEGIN:
+            /* Initialize PWM on the supplied pin and assign a new clock */
+            rslt = cyhal_pwm_init(&pwm_obj, P9_6, NULL);
+            rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 523);
+            /* Start the PWM output */
+            rslt = cyhal_pwm_start(&pwm_obj);
+            cyhal_system_delay_ms(500);
+            rslt = cyhal_pwm_stop(&pwm_obj);
+            cyhal_pwm_free(&pwm_obj);
+            break;
+
+        case SOUND_ERROR:
+            /* Initialize DAC, set Pin 9.6 as the DAC output */
+            dac_result = cyhal_dac_init(&my_dac_obj, P9_6);
+
+            /* Check the return of cyhal_dac_init to confirm initialization was successful */
+            if (dac_result != CY_RSLT_SUCCESS)
             {
-                /* Insert code */
+                printf("ERROR: DAC failed to initialize\n\r");
             }
-            // TODO: is this enough? Do I need a timer instead?
-            // Delay for ~1/24000ths of a second, (sample rate of audio array is 24khz)
-            cyhal_system_delay_us(125);
-        }
+            // Play the error sound
+            for (sample = 0; sample < 16344; sample++)
+            {
+                /* Write the 16 bit value as DAC input */
+                cyhal_dac_write(&my_dac_obj, 0xFF * error_sound[sample]);
+
+                // Delay for ~1/8000ths of a second, (sample rate of audio array is 8khz)
+                cyhal_system_delay_us(125);
+            }
+            cyhal_dac_free(&my_dac_obj);
+            break;
     }
-    /* Release DAC object after use by calling cyhal_dac_free, this de-initializes the DAC (including its output) */
-    cyhal_dac_free(&my_dac_obj);
 }
 
-void mcu_reg_leds_init()
+void leds_init()
 {
     // TODO: Add serial indication if an error occurred for a specific LED
     cy_rslt_t rslt;
@@ -90,7 +110,7 @@ void mcu_reg_leds_init()
         CY_ASSERT(0);
         while (1)
         {
-            printf("XXX ERROR: ON/OFF LED failed to initialize\n\r");
+            printf("ERROR: ON/OFF LED failed to initialize\n\r");
         };
     }
 
@@ -106,7 +126,7 @@ void mcu_reg_leds_init()
         CY_ASSERT(0);
         while (1)
         {
-            printf("XXX ERROR: LED P2 failed to initialize\n\r");
+            printf("ERROR: LED P2 failed to initialize\n\r");
         };
     }
 
@@ -122,68 +142,97 @@ void mcu_reg_leds_init()
         CY_ASSERT(0);
         while (1)
         {
-            printf("XXX ERROR: LED P1 failed to initialize\n\r");
+            printf("ERROR: LED P1 failed to initialize\n\r");
         };
     }
-}
 
-void pwm_init(int rgb_hz, int rgb_duty)
-{
-    cy_rslt_t rslt;
+    // RGB LED 1
+    rslt = cyhal_gpio_init(
+        PIN_GAME_STATE_LED_R,
+        CYHAL_GPIO_DIR_OUTPUT,
+        CYHAL_GPIO_DRIVE_STRONG,
+        false);
 
-    /////////////////////////////////////////////////////////////////
-    // RGB1 (game state led)
-    /////////////////////////////////////////////////////////////////
-    /* Initialize PWM on the supplied pin and assign a new clock */
-    rslt = cyhal_pwm_init(&game_state_led_b, P5_5, NULL);
-    /* Set a duty cycle of 50% and frequency of 1Hz */
-    rslt = cyhal_pwm_set_duty_cycle(&game_state_led_b, rgb_duty, rgb_hz);
-    /* Stop the PWM output */
-    rslt = cyhal_pwm_stop(&game_state_led_b);
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        CY_ASSERT(0);
+        while (1)
+        {
+            printf("ERROR: RGB LED 1 - R failed to initialize\n\r");
+        };
+    }
+    rslt = cyhal_gpio_init(
+        PIN_GAME_STATE_LED_G,
+        CYHAL_GPIO_DIR_OUTPUT,
+        CYHAL_GPIO_DRIVE_STRONG,
+        false);
 
-    /* Initialize PWM on the supplied pin and assign a new clock */
-    rslt = cyhal_pwm_init(&game_state_led_r, P5_3, NULL);
-    /* Set a duty cycle of 50% and frequency of 1Hz */
-    rslt = cyhal_pwm_set_duty_cycle(&game_state_led_r, rgb_duty, rgb_hz);
-    /* Stop the PWM output */
-    rslt = cyhal_pwm_stop(&game_state_led_r);
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        CY_ASSERT(0);
+        while (1)
+        {
+            printf("ERROR: RGB LED 1 - G failed to initialize\n\r");
+        };
+    }
+    rslt = cyhal_gpio_init(
+        PIN_GAME_STATE_LED_B,
+        CYHAL_GPIO_DIR_OUTPUT,
+        CYHAL_GPIO_DRIVE_STRONG,
+        false);
 
-    /* Initialize PWM on the supplied pin and assign a new clock */
-    rslt = cyhal_pwm_init(&game_state_led_g, P5_2, NULL);
-    /* Set a duty cycle of 50% and frequency of 1Hz */
-    rslt = cyhal_pwm_set_duty_cycle(&game_state_led_g, rgb_duty, rgb_hz);
-    /* Stop the PWM output */
-    rslt = cyhal_pwm_stop(&game_state_led_g);
-}
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        CY_ASSERT(0);
+        while (1)
+        {
+            printf("ERROR: RGB LED 1 - B failed to initialize\n\r");
+        };
+    }
 
-void rgb_on(cyhal_pwm_t *rgb_obj_r, cyhal_pwm_t *rgb_obj_g, cyhal_pwm_t *rgb_obj_b, int color)
-{
-   switch (color)
-   {
-        case RGB_GREEN:
-            cyhal_pwm_stop(rgb_obj_r);
-            cyhal_pwm_stop(rgb_obj_b);
-            cyhal_pwm_start(rgb_obj_g);
-            break;
-        
-        case RGB_RED:
-            cyhal_pwm_start(rgb_obj_r);
-            cyhal_pwm_stop(rgb_obj_b);
-            cyhal_pwm_stop(rgb_obj_g);
-            break;
-        
-        case RGB_YELLOW:
-            cyhal_pwm_stop(rgb_obj_r);
-            cyhal_pwm_start(rgb_obj_b);
-            cyhal_pwm_start(rgb_obj_g);
-            break;
+    // RGB LED 2
+    rslt = cyhal_gpio_init(
+        PIN_WINNER_LED_R,
+        CYHAL_GPIO_DIR_OUTPUT,
+        CYHAL_GPIO_DRIVE_STRONG,
+        false);
 
-        default:
-            cyhal_pwm_stop(rgb_obj_r);
-            cyhal_pwm_stop(rgb_obj_b);
-            cyhal_pwm_stop(rgb_obj_g);
-            break;
-   }
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        CY_ASSERT(0);
+        while (1)
+        {
+            printf("ERROR: RGB LED 2 - R failed to initialize\n\r");
+        };
+    }
+    rslt = cyhal_gpio_init(
+        PIN_WINNER_LED_G,
+        CYHAL_GPIO_DIR_OUTPUT,
+        CYHAL_GPIO_DRIVE_STRONG,
+        false);
+
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        CY_ASSERT(0);
+        while (1)
+        {
+            printf("ERROR: RGB LED 2 - G failed to initialize\n\r");
+        };
+    }
+    rslt = cyhal_gpio_init(
+        PIN_WINNER_LED_B,
+        CYHAL_GPIO_DIR_OUTPUT,
+        CYHAL_GPIO_DRIVE_STRONG,
+        false);
+
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        CY_ASSERT(0);
+        while (1)
+        {
+            printf("ERROR: RGB LED 2 - B failed to initialize\n\r");
+        };
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -196,6 +245,10 @@ void task_state_manager(void *param)
     static int STATE;
 
     cy_rslt_t rslt;
+
+    uint8_t light_value;
+
+    BaseType_t rtos_api_result;
 
     /* Suppress warning for unused parameter */
     (void)param;
@@ -218,6 +271,9 @@ void task_state_manager(void *param)
                     pdTRUE,
                     pdTRUE,
                     portMAX_DELAY);
+                
+                STATE = STATE_P1_TURN;
+                break;
 
             case STATE_P1_TURN:
                 printf("* --- Currently in Player 1's Turn state        --- *\n\r");
@@ -234,22 +290,45 @@ void task_state_manager(void *param)
                     pdTRUE,
                     portMAX_DELAY);
 
+                /*
+                rtos_api_result = xQueueReceive(xLightQueue, &light_value, portMAX_DELAY);
+                if (rtos_api_result == pdFALSE)
+                {
+                    printf("ERROR: light value not received\n\r");
+                    CY_ASSERT(0);
+                }
+
+                if (light_value > LIGHT_THRESHOLD)
+                {
+                    play_sound(SOUND_ERROR);
+                    printf("Dropper is jammed! Player 1 intervention required.\n\r");
+                    continue; // stay in p1 turn state
+                } 
+                */
+
                 STATE = STATE_P2_TURN;
                 break;
 
             case STATE_P2_TURN:
                 printf("* --- Currently in Player 2's Turn state        --- *\n\r");
+                uint8_t p2_move;
                 // Set LEDs
                 cyhal_gpio_write(PIN_GAME_STATE_LED_R, false);
                 cyhal_gpio_write(PIN_GAME_STATE_LED_B, true);
                 cyhal_gpio_write(PIN_GAME_STATE_LED_G, false);
 
-                xEventGroupWaitBits(
-                    xConnectFourEventGroup, 
-                    EVENT_PASS_TURN_MASK,
-                    pdTRUE,
-                    pdTRUE,
-                    portMAX_DELAY);
+                // Wait for P2's move over BLE
+                xQueueReceive(xPieceQueue, &p2_move, portMAX_DELAY);
+                // Cleanup move 
+                p2_move = p2_move & 0x07;
+                printf("move received in sm: %x \n\r", p2_move);
+                // Move dropper unit here
+
+                // Replace this with reading from pi
+                board_state_curr[p2_move] = YELLOW_PIECE;
+
+                /* Send response to GATT Client device */
+                ble_write_response();
                     
                 STATE = STATE_P1_TURN;
                 break;
@@ -308,14 +387,8 @@ int main(void)
     printf("* ------------------------------------------------------------- *\n\r");
     printf("\n\r");
 
-    
-
     printf("* --- Initializing LEDs                                     --- *\n\r");
-    mcu_reg_leds_init();
-    cyhal_gpio_init(PIN_GAME_STATE_LED_R, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-    cyhal_gpio_init(PIN_GAME_STATE_LED_G, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-    cyhal_gpio_init(PIN_GAME_STATE_LED_B, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-
+    leds_init();
 
     printf("* --- Initializing Push Button                              --- *\n\r");
     rslt = cyhal_gpio_init(
@@ -328,6 +401,7 @@ int main(void)
     cyhal_gpio_write(PIN_ONOFF_LED, true);
 
     printf("* --- Playing startup sound                                 --- *\n\r");
+    play_sound(SOUND_STARTUP);
     
     cyhal_pwm_t pwm_obj;
     /* Initialize PWM on the supplied pin and assign a new clock */
@@ -352,10 +426,14 @@ int main(void)
 
     for (uint8_t i = 0; i < BOARD_SIZE; i++)
     {
-        rpi_i2c_response_curr[i] = i % 3;
+        board_state_curr[i] = 0;
     }
 
+    // FreeRTOS things
     ble_cmdQ = xQueueCreate(BLE_CMD_Q_LEN, sizeof(uint8_t));
+
+    xLightQueue = xQueueCreate(1, sizeof(uint8_t));
+    xPieceQueue = xQueueCreate(1, sizeof(uint8_t));
 
     timer_handle = xTimerCreate("Timer", pdMS_TO_TICKS(1000), pdTRUE, NULL, rtos_timer_cb);
 
@@ -373,7 +451,7 @@ int main(void)
     xTaskCreate(
         task_state_manager,
         "State Manager",
-        configMINIMAL_STACK_SIZE,
+        SM_TASK_STACK_SIZE,
         NULL,
         3,
         &xSMHandle);

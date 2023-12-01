@@ -72,6 +72,18 @@
 #define PIN_I2C_SCL                 P9_0
 #define PIN_I2C_SDA                 P9_1
 
+// Sounds
+#define SOUND_STARTUP               0
+#define SOUND_ERROR                 1
+#define SOUND_BEGIN                 2
+
+// Configurations
+#define BLE_TASK_STACK_SIZE     (configMINIMAL_STACK_SIZE * 8)
+#define SM_TASK_STACK_SIZE      (configMINIMAL_STACK_SIZE * 4)
+#define BLE_CMD_Q_LEN           (10u)
+#define LIGHT_THRESHOLD         1000
+
+
 //extern void rgb_on(cyhal_pwm_t *rgb_obj_r, cyhal_pwm_t *rgb_obj_g, cyhal_pwm_t *rgb_obj_b, int color);
 
 #endif /* MAIN_H_ */
