@@ -261,9 +261,6 @@ void task_state_manager(void *param)
         {     
             case STATE_INIT:
                 printf("* --- Currently in INIT state                   --- *\n\r");
-                
-                // In case pass turn pb was pressed while in P2 turn
-                xEventGroupClearBits(xConnectFourEventGroup, EVENT_PASS_TURN_MASK);
 
                 cyhal_gpio_write(PIN_GAME_STATE_LED_R, false);
                 cyhal_gpio_write(PIN_GAME_STATE_LED_B, false);
@@ -281,6 +278,10 @@ void task_state_manager(void *param)
 
             case STATE_P1_TURN:
                 printf("* --- Currently in Player 1's Turn state        --- *\n\r");
+
+                // In case pass turn pb was pressed while in P2 turn
+                xEventGroupClearBits(xConnectFourEventGroup, EVENT_PASS_TURN_MASK);
+                
                 // Set LEDs
                 cyhal_gpio_write(PIN_GAME_STATE_LED_R, true);
                 cyhal_gpio_write(PIN_GAME_STATE_LED_B, false);
