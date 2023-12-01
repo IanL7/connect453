@@ -40,7 +40,7 @@ TARGET=CY8CPROTO-063-BLE
 # 
 # If APPNAME is edited, ensure to update or regenerate launch 
 # configurations for your IDE.
-APPNAME=mtb_example_psoc6_empty_app
+APPNAME=mtb-example-psoc6-empty-app
 
 # Name of toolchain to use. Options include:
 #

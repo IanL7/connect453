@@ -76,6 +76,7 @@ extern bool brd_rdy;
  * Function prototypes
  *****************************************************************************/
 void task_BLE(void *pvParameters);
+void rtos_timer_cb(TimerHandle_t timer_handle);
 throughput_val_t* get_throughput(void);
 
 #endif /* RTOS_FILES_BLE_TASK_H_ */

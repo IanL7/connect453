@@ -46,6 +46,8 @@
 #include "cybsp.h"
 #include "cyhal.h"
 #include "cy_pdl.h"
+#include "main.h"
+#include "cy_retarget_io.h"
 
 #ifdef EINK_DISPLAY_SHIELD_PRESENT
 #include "display_task.h"
@@ -209,7 +211,7 @@ static void ble_init(void)
         /* BLE stack initialization failed, check configuration, notify error
          * and halt CPU in debug mode
          */
-        eprintf("Cy_BLE_Init API, errorcode: 0x%X", ble_api_result);
+        printf("Cy_BLE_Init API, errorcode: 0x%X", ble_api_result);
         vTaskSuspend(NULL);
     }
 
@@ -220,7 +222,7 @@ static void ble_init(void)
         /* BLE stack initialization failed, check configuration, notify error
          * and halt CPU in debug mode
          */
-        eprintf("Cy_BLE_Enable API errorcode: 0x%X ", ble_api_result);
+        printf("Cy_BLE_Enable API errorcode: 0x%X ", ble_api_result);
         vTaskSuspend(NULL);
     }
     /* Process BLE events after enabling BLE */
@@ -254,16 +256,16 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
         /* This event is received when the BLE stack is Started */
         case CY_BLE_EVT_STACK_ON:
         {
-            iprintf("BLE Stack Event : CY_BLE_EVT_STACK_ON");
+            printf("BLE Stack Event : CY_BLE_EVT_STACK_ON");
             /* Start Advertisement and enter discoverable mode */
             ble_api_result = Cy_BLE_GAPP_StartAdvertisement(CY_BLE_ADVERTISING_FAST, CY_BLE_PERIPHERAL_CONFIGURATION_0_INDEX);
             if(ble_api_result == CY_BLE_SUCCESS)
             {
-                iprintf("BLE Advertisement started successfully");
+                printf("BLE Advertisement started successfully");
             }
             else
             {
-                eprintf("BLE Advertisement API, errorcode = 0x%X", ble_api_result);
+                printf("BLE Advertisement API, errorcode = 0x%X", ble_api_result);
             }
             break;
         }
@@ -293,7 +295,7 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
         /* This event is received when there is a timeout */
         case CY_BLE_EVT_TIMEOUT:
         {
-            iprintf("BLE Stack Event - Event timeout");
+            printf("BLE Stack Event - Event timeout");
             break;
         }
 
@@ -306,11 +308,11 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
         case CY_BLE_EVT_GAPP_ADVERTISEMENT_START_STOP:
         {
             cy_en_ble_adv_state_t adv_state;
-            iprintf("BLE Stack Event : CY_BLE_EVT_GAPP_ADVERTISEMENT_START_STOP");
+            printf("BLE Stack Event : CY_BLE_EVT_GAPP_ADVERTISEMENT_START_STOP");
             adv_state = Cy_BLE_GetAdvertisementState();
             if(adv_state == CY_BLE_ADV_STATE_ADVERTISING)
             {
-                tprintf("Advertising.....\r\n");
+                printf("Advertising.....\r\n");
             }
             break;
         }
@@ -319,7 +321,7 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
          * is completed with peer Central device */
         case CY_BLE_EVT_GAP_DEVICE_CONNECTED:
         {
-            iprintf("BLE Stack Event : CY_BLE_EVT_GAP_DEVICE_CONNECTED");
+            printf("BLE Stack Event : CY_BLE_EVT_GAP_DEVICE_CONNECTED");
             conn_param = *((cy_stc_ble_gap_connected_param_t*)eventParam);
 
             /* Variable to store values to update PHY to 2M */
@@ -336,15 +338,15 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
             ble_api_result = Cy_BLE_SetPhy(&phy_param);
             if(ble_api_result == CY_BLE_SUCCESS)
             {
-                iprintf("Set PHY to 2M successfull");
-                tprintf("Request sent to switch PHY to 2M\r\n");
+                printf("Set PHY to 2M successfull");
+                printf("Request sent to switch PHY to 2M\r\n");
             }
             else
             {
-                eprintf("Set PHY to 2M API failure, errorcode = 0x%X", ble_api_result);
+                printf("Set PHY to 2M API failure, errorcode = 0x%X", ble_api_result);
             }
             conn_interval = (conn_param.connIntv) * CONN_INTERVAL_MULTIPLIER;
-            tprintf("Connection Interval is: %f ms\r\n", conn_interval);
+            printf("Connection Interval is: %f ms\r\n", conn_interval);
             break;
         }
 
@@ -352,8 +354,8 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
          * device or fails to establish connection */
         case CY_BLE_EVT_GAP_DEVICE_DISCONNECTED:
         {
-            iprintf("BLE Stack Event : CY_BLE_EVT_GAP_DEVICE_DISCONNECTED");
-            tprintf("Disconnected from peer!!!\r\n");
+            printf("BLE Stack Event : CY_BLE_EVT_GAP_DEVICE_DISCONNECTED");
+            printf("Disconnected from peer!!!\r\n");
 
             /* Stop the FreeRTOS timer upon device disconnection */
             xTimerStop(timer_handle, (TickType_t)0);
@@ -371,18 +373,18 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
             ble_api_result = Cy_BLE_GAPP_StartAdvertisement(CY_BLE_ADVERTISING_FAST, CY_BLE_PERIPHERAL_CONFIGURATION_0_INDEX);
             if(ble_api_result == CY_BLE_SUCCESS)
             {
-                iprintf("BLE Advertisement API successfull");
+                printf("BLE Advertisement API successfull");
             }
             else
             {
-                eprintf("BLE Advertisement API failure, errorcode = 0x%X", ble_api_result);
+                printf("BLE Advertisement API failure, errorcode = 0x%X", ble_api_result);
             }
         }
 
         /* This event is generated when PHY is updated during an active connection */
         case CY_BLE_EVT_PHY_UPDATE_COMPLETE:
         {
-            iprintf("BLE Stack Event : CY_BLE_EVT_PHY_UPDATE_COMPLETE");
+            printf("BLE Stack Event : CY_BLE_EVT_PHY_UPDATE_COMPLETE");
 
             cy_stc_ble_events_param_generic_t *genericParam;
             cy_stc_ble_phy_param_t *currentPHY;
@@ -396,15 +398,15 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
             switch(currentPHY->rxPhyMask)
             {
                 case CY_BLE_PHY_MASK_LE_1M:
-                tprintf("Selected Rx PHY: 1M\r\n");
+                printf("Selected Rx PHY: 1M\r\n");
                 break;
 
                 case CY_BLE_PHY_MASK_LE_2M:
-                tprintf("Selected Rx PHY: 2M\r\n");
+                printf("Selected Rx PHY: 2M\r\n");
                 break;
 
                 case CY_BLE_PHY_MASK_LE_CODED:
-                tprintf("Selected Rx PHY: LE Coded\r\n");
+                printf("Selected Rx PHY: LE Coded\r\n");
                 break;
             }
 
@@ -412,15 +414,15 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
             switch(currentPHY->txPhyMask)
             {
                 case CY_BLE_PHY_MASK_LE_1M:
-                tprintf("Selected Tx PHY: 1M\r\n");
+                printf("Selected Tx PHY: 1M\r\n");
                 break;
 
                 case CY_BLE_PHY_MASK_LE_2M:
-                tprintf("Selected Tx PHY: 2M\r\n");
+                printf("Selected Tx PHY: 2M\r\n");
                 break;
 
                 case CY_BLE_PHY_MASK_LE_CODED:
-                tprintf("Selected Tx PHY: LE Coded\r\n");
+                printf("Selected Tx PHY: LE Coded\r\n");
                 break;
             }
 
@@ -438,11 +440,11 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
                 ble_api_result = Cy_BLE_L2CAP_LeConnectionParamUpdateRequest(&conn_params);
                 if(ble_api_result == CY_BLE_SUCCESS)
                 {
-                    iprintf("L2CAP Connection Parameter update request sent successfully");
+                    printf("L2CAP Connection Parameter update request sent successfully");
                 }
                 else
                 {
-                    eprintf("FAILURE : L2CAP Connection Parameter update request failed, errorcode = 0x%X", ble_api_result);
+                    printf("FAILURE : L2CAP Connection Parameter update request failed, errorcode = 0x%X", ble_api_result);
                 }
             }
             break;
@@ -454,13 +456,13 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
          * is not generated */
         case CY_BLE_EVT_GAP_CONNECTION_UPDATE_COMPLETE:
         {
-            iprintf("BLE Stack Event : CY_BLE_EVT_GAP_CONNECTION_UPDATE_COMPLETE");
+            printf("BLE Stack Event : CY_BLE_EVT_GAP_CONNECTION_UPDATE_COMPLETE");
             cy_stc_ble_gap_conn_param_updated_in_controller_t *new_conn_params;
             new_conn_params = (cy_stc_ble_gap_conn_param_updated_in_controller_t*)eventParam;
 
             /* Store the new connection interval value */
             conn_interval = (new_conn_params->connIntv) * CONN_INTERVAL_MULTIPLIER;
-            tprintf("Updated Connection Interval: %f ms\r\n", conn_interval);
+            printf("Updated Connection Interval: %f ms\r\n", conn_interval);
             break;
         }
 
@@ -472,8 +474,8 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
         case CY_BLE_EVT_GATT_CONNECT_IND:
         {
             conn_handle = *((cy_stc_ble_conn_handle_t*)eventParam);
-            iprintf("BLE Stack Event : CY_BLE_EVT_GATT_CONNECT_IND");
-            tprintf("GATT connected\r\n");
+            printf("BLE Stack Event : CY_BLE_EVT_GATT_CONNECT_IND");
+            printf("GATT connected\r\n");
 
             /* Start 1 second timer to calculate throughput */
             xTimerStart(timer_handle, (TickType_t)0);
@@ -483,7 +485,7 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
         /* This event indicates that the GATT is disconnected.*/
         case CY_BLE_EVT_GATT_DISCONNECT_IND:
         {
-            iprintf("BLE Stack Event : CY_BLE_EVT_GATT_DISCONNECT_IND");
+            printf("BLE Stack Event : CY_BLE_EVT_GATT_DISCONNECT_IND");
             break;
         }
 
@@ -491,7 +493,7 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
          * Client device */
         case CY_BLE_EVT_GATTS_WRITE_REQ:
         {
-            iprintf("BLE Stack Event : CY_BLE_EVT_GATTS_WRITE_REQ");
+            printf("BLE Stack Event : CY_BLE_EVT_GATTS_WRITE_REQ");
             write_req_param = (cy_stc_ble_gatt_write_param_t*)eventParam;
 
             printf("[INFO] : GATT write USR_P2MOVE_VAL characteristic with value: 0x%x\r\n", write_req_param->handleValPair.value.val[0]);
@@ -519,7 +521,7 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
           * client device */
         case CY_BLE_EVT_GATTS_READ_CHAR_VAL_ACCESS_REQ:
         {
-            iprintf("BLE Stack Event : CY_BLE_EVT_GATTS_READ_CHAR_VAL_ACCESS_REQ");
+            printf("BLE Stack Event : CY_BLE_EVT_GATTS_READ_CHAR_VAL_ACCESS_REQ");
             read_req_param = (cy_stc_ble_gatts_char_val_read_req_t *)eventParam;
 
             if (CY_BLE_BOARD_USR_BRD_CHAR_HANDLE == read_req_param->attrHandle)
@@ -536,10 +538,10 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
           */
         case CY_BLE_EVT_GATTS_XCNHG_MTU_REQ:
         {
-            iprintf("BLE Stack Event : CY_BLE_EVT_GATTS_XCNHG_MTU_REQ");
+            printf("BLE Stack Event : CY_BLE_EVT_GATTS_XCNHG_MTU_REQ");
             cy_stc_ble_gatt_xchg_mtu_param_t mtuParam;
             mtuParam = *(cy_stc_ble_gatt_xchg_mtu_param_t*)eventParam;
-            tprintf("Client MTU Size: %d \r\n", mtuParam.mtu);
+            printf("Client MTU Size: %d \r\n", mtuParam.mtu);
             if(mtuParam.mtu > CY_BLE_GATT_MTU)
             {
                 att_mtu_size = CY_BLE_GATT_MTU;
@@ -564,11 +566,11 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
             /* Print the response on UART terminal*/
             if(conn_param_rsp.result == 0u)
             {
-                tprintf("Connection Interval update request accepted\r\n");
+                printf("Connection Interval update request accepted\r\n");
             }
             else
             {
-                tprintf("Connection Interval update request rejected\r\n");
+                printf("Connection Interval update request rejected\r\n");
             }
             break;
         }
@@ -578,7 +580,7 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
         ***********************************************************************/
         default:
         {
-            iprintf("Other BLE event: 0x%X", (uint32_t)event);
+            printf("Other BLE event: 0x%X", (uint32_t)event);
             break;
         }
     }
@@ -622,6 +624,46 @@ static void ble_controller_interrupt_handler(void)
     uint8_t bleCommand = BLE_PROCESS_EVENTS;
     xQueueSendFromISR(ble_cmdQ, &bleCommand, &xHigherPriorityTaskWoken);
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+}
+
+/*******************************************************************************
+* Function Name: void rtos_timer_cb(TimerHandle_t timer_handle)
+********************************************************************************
+* Summary: This is a freeRTOS Software timer callback function. It calculates
+*          the throughput and displays the value over UART terminal.
+*
+* Parameters:
+*  TimerHandle_t timer_handle: parameter defined during timer creation (unused)
+*
+* Return:
+*  None
+*******************************************************************************/
+void rtos_timer_cb(TimerHandle_t timer_handle)
+{
+    /* Avoid warning for unused parameter */
+    (void)timer_handle;
+    server_throughput.rx = 0u;
+    server_throughput.tx = 0u;
+    /* Calculate TX and RX throughput
+     *
+     * throughput(kbps) = (number of bytes sent/received in 1 second) * 8(bits)
+     *                    -----------------------------------------------------
+     *                                   1 second * 2^10 (kilo)
+     */
+
+    if(notif_tx_bytes != 0u)
+    {
+    server_throughput.tx = (notif_tx_bytes) >> 7u;
+    notif_tx_bytes = 0u;
+    printf("GATT NOTIFICATION: Server Throughput Tx= %lu kbps\r\n", server_throughput.tx);
+    }
+
+    if(gatt_write_rx_bytes != 0u)
+    {
+    server_throughput.rx = (gatt_write_rx_bytes) >> 7u;
+    gatt_write_rx_bytes = 0u;
+    printf("GATT WRITE:        Server Throughput Rx= %lu kbps\r\n", server_throughput.rx);
+    }
 }
 
 /* [] END OF FILE */

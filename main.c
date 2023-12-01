@@ -2,7 +2,6 @@
 #include "cy_retarget_io.h"
 #include "cybsp.h"
 #include "cyhal.h"
-#include "ble_findme.h"
 #include "main.h"
 #include "audio.h"
 #include "cybsp_types.h"
@@ -33,6 +32,7 @@ bool brd_rdy;
 
 TaskHandle_t ble_task_handle;
 QueueHandle_t ble_cmdQ;
+TimerHandle_t timer_handle;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Plain Functions
@@ -208,8 +208,9 @@ void task_state_manager(void *param)
         {     
             case STATE_INIT:
                 printf("* --- Currently in INIT state                   --- *\n\r");
-                cyhal_gpio_write(PIN_PLAYER2_LED, false);
-                cyhal_gpio_write(PIN_PLAYER1_LED, false);
+                cyhal_gpio_write(PIN_GAME_STATE_LED_R, false);
+                cyhal_gpio_write(PIN_GAME_STATE_LED_B, false);
+                cyhal_gpio_write(PIN_GAME_STATE_LED_G, true);
 
                 xEventGroupWaitBits(
                     xConnectFourEventGroup, 
@@ -217,15 +218,13 @@ void task_state_manager(void *param)
                     pdTRUE,
                     pdTRUE,
                     portMAX_DELAY);
-                
-                mcu_play_sound(begin, 35278);
-                rgb_on(&game_state_led_r, &game_state_led_g, &game_state_led_b, RGB_GREEN);
 
             case STATE_P1_TURN:
                 printf("* --- Currently in Player 1's Turn state        --- *\n\r");
                 // Set LEDs
-                cyhal_gpio_write(PIN_PLAYER2_LED, false);
-                cyhal_gpio_write(PIN_PLAYER1_LED, true);
+                cyhal_gpio_write(PIN_GAME_STATE_LED_R, true);
+                cyhal_gpio_write(PIN_GAME_STATE_LED_B, false);
+                cyhal_gpio_write(PIN_GAME_STATE_LED_G, false);
 
                 // Should I be clearing all bits here?
                 xEventGroupWaitBits(
@@ -241,8 +240,9 @@ void task_state_manager(void *param)
             case STATE_P2_TURN:
                 printf("* --- Currently in Player 2's Turn state        --- *\n\r");
                 // Set LEDs
-                cyhal_gpio_write(PIN_PLAYER2_LED, true);
-                cyhal_gpio_write(PIN_PLAYER1_LED, false);
+                cyhal_gpio_write(PIN_GAME_STATE_LED_R, false);
+                cyhal_gpio_write(PIN_GAME_STATE_LED_B, true);
+                cyhal_gpio_write(PIN_GAME_STATE_LED_G, false);
 
                 xEventGroupWaitBits(
                     xConnectFourEventGroup, 
@@ -284,7 +284,6 @@ void task_pole_passturn_pb(void *param)
 
         if (curr_pb_state == PB_PRESSED && prev_pb_state == PB_NOT_PRESSED)
         {
-            printf("    - PB pressed!\n\r");
             xEventGroupSetBits(xConnectFourEventGroup, EVENT_PASS_TURN_MASK);
         }
         prev_pb_state = curr_pb_state;
@@ -313,7 +312,10 @@ int main(void)
 
     printf("* --- Initializing LEDs                                     --- *\n\r");
     mcu_reg_leds_init();
+    cyhal_gpio_init(PIN_GAME_STATE_LED_R, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
+    cyhal_gpio_init(PIN_GAME_STATE_LED_G, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
     cyhal_gpio_init(PIN_GAME_STATE_LED_B, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
+
 
     printf("* --- Initializing Push Button                              --- *\n\r");
     rslt = cyhal_gpio_init(
@@ -355,7 +357,9 @@ int main(void)
 
     ble_cmdQ = xQueueCreate(BLE_CMD_Q_LEN, sizeof(uint8_t));
 
-    /*
+    timer_handle = xTimerCreate("Timer", pdMS_TO_TICKS(1000), pdTRUE, NULL, rtos_timer_cb);
+
+    
     xTaskCreate(
         task_pole_passturn_pb,
         "Pole Pass-Turn Push Button",
@@ -363,9 +367,9 @@ int main(void)
         NULL,
         3,
         &xPPBHandle);
-    */
+    
 
-    /*
+    
     xTaskCreate(
         task_state_manager,
         "State Manager",
@@ -373,7 +377,7 @@ int main(void)
         NULL,
         3,
         &xSMHandle);
-    */
+    
 
     xTaskCreate(
         task_BLE,
@@ -381,11 +385,9 @@ int main(void)
         BLE_TASK_STACK_SIZE,
         NULL,
         1,
-        NULL);
+        &ble_task_handle);
 
     printf("* --- Starting task scheduler                               --- *\n\r");
-
-    ble_findme_init();
 
     vTaskStartScheduler();
 
