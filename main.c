@@ -261,6 +261,10 @@ void task_state_manager(void *param)
         {     
             case STATE_INIT:
                 printf("* --- Currently in INIT state                   --- *\n\r");
+                
+                // In case pass turn pb was pressed while in P2 turn
+                xEventGroupClearBits(xConnectFourEventGroup, EVENT_PASS_TURN_MASK);
+
                 cyhal_gpio_write(PIN_GAME_STATE_LED_R, false);
                 cyhal_gpio_write(PIN_GAME_STATE_LED_B, false);
                 cyhal_gpio_write(PIN_GAME_STATE_LED_G, true);
@@ -402,6 +406,8 @@ int main(void)
 
     printf("* --- Playing startup sound                                 --- *\n\r");
     play_sound(SOUND_STARTUP);
+    play_sound(SOUND_ERROR);
+    play_sound(SOUND_BEGIN);
     
     cyhal_pwm_t pwm_obj;
     /* Initialize PWM on the supplied pin and assign a new clock */
