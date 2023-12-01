@@ -69,8 +69,8 @@ extern QueueHandle_t ble_cmdQ;
 extern TimerHandle_t timer_handle;
 extern bool notify;
 
-extern uint8_t rpi_i2c_response_curr[BOARD_SIZE];
-extern bool brd_rdy;
+extern uint8_t board_state_curr[BOARD_SIZE];
+extern QueueHandle_t xPieceQueue;
 
 /******************************************************************************
  * Function prototypes
@@ -78,6 +78,7 @@ extern bool brd_rdy;
 void task_BLE(void *pvParameters);
 void rtos_timer_cb(TimerHandle_t timer_handle);
 throughput_val_t* get_throughput(void);
+void ble_write_response();
 
 #endif /* RTOS_FILES_BLE_TASK_H_ */
 /* [] END OF FILE */
