@@ -7,6 +7,7 @@
 #include "cybsp_types.h"
 #include "ble_task.h"
 #include "light_sensor_task.h"
+#include "rpi_task.h"
 
 /* RTOS header files */
 #include <FreeRTOS.h>
@@ -406,22 +407,6 @@ int main(void)
 
     printf("* --- Playing startup sound                                 --- *\n\r");
     play_sound(SOUND_STARTUP);
-    play_sound(SOUND_ERROR);
-    play_sound(SOUND_BEGIN);
-    
-    cyhal_pwm_t pwm_obj;
-    /* Initialize PWM on the supplied pin and assign a new clock */
-    rslt = cyhal_pwm_init(&pwm_obj, P9_6, NULL);
-    /* Set a duty cycle of 50% and frequency of 1Hz */
-    rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 440);
-    /* Start the PWM output */
-    rslt = cyhal_pwm_start(&pwm_obj);
-    cyhal_system_delay_ms(500);
-    rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 523);
-    cyhal_system_delay_ms(500);
-    rslt = cyhal_pwm_stop(&pwm_obj);
-
-    printf("* --- Done with startup sound                                 --- *\n\r");
 
     xConnectFourEventGroup = xEventGroupCreate();
 
@@ -430,18 +415,21 @@ int main(void)
         printf("XXX ERROR: Event group not created\n\r");
     }
 
+    // Initialize board to empty (remove in production)
     for (uint8_t i = 0; i < BOARD_SIZE; i++)
     {
         board_state_curr[i] = 0;
     }
 
+    printf("* --- Initializing Light Sensor                             --- *\n\r");
+    light_sensor_init();
+
     // FreeRTOS things
     ble_cmdQ = xQueueCreate(BLE_CMD_Q_LEN, sizeof(uint8_t));
+    timer_handle = xTimerCreate("Timer", pdMS_TO_TICKS(1000), pdTRUE, NULL, rtos_timer_cb);
 
     xLightQueue = xQueueCreate(1, sizeof(uint8_t));
     xPieceQueue = xQueueCreate(1, sizeof(uint8_t));
-
-    timer_handle = xTimerCreate("Timer", pdMS_TO_TICKS(1000), pdTRUE, NULL, rtos_timer_cb);
 
     
     xTaskCreate(
@@ -451,8 +439,6 @@ int main(void)
         NULL,
         3,
         &xPPBHandle);
-    
-
     
     xTaskCreate(
         task_state_manager,
@@ -470,6 +456,24 @@ int main(void)
         NULL,
         1,
         &ble_task_handle);
+    
+    xTaskCreate(
+        task_rpi,
+        "Raspberry Pi",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        4,
+        NULL);
+    
+    /*
+    xTaskCreate(
+        task_light_sensor,
+        "Light Sensor",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        4,
+        NULL);
+    */
 
     printf("* --- Starting task scheduler                               --- *\n\r");
 

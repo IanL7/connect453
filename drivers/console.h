@@ -25,7 +25,7 @@
 extern volatile bool ALERT_CONSOLE_RX;
 
 extern char pcInputString[];
-extern int8_t cInputIndex;
+extern int16_t cInputIndex;
 extern char inputString[];
 
 /* Public Function API */

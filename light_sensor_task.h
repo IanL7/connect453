@@ -2,7 +2,7 @@
  * light_sensor_task.h
  *
  *  Created on: Nov 30, 2023
- *      Author: Ian Lodes
+ *      Author: Christian VanIten and Ian Lodes
  */
 
 #ifndef LIGHT_SENSOR_TASK_H_
@@ -20,5 +20,6 @@ extern QueueHandle_t xLightQueue;
 
 /* Function Prototypes */
 void light_sensor_init();
+void task_light_sensor(void *pvParameters);
 
 #endif /* LIGHT_SENSOR_TASK_H_ */
