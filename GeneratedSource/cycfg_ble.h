@@ -105,7 +105,7 @@
 #define CY_BLE_GATT_MTU                             (0x17u)
 
 /** The GATT Maximum attribute length */
-#define CY_BLE_GATT_DB_MAX_VALUE_LEN                (0x002Au)
+#define CY_BLE_GATT_DB_MAX_VALUE_LEN                (0x002Bu)
 #define CY_BLE_GATT_DB_INDEX_COUNT                  (0x0014u)
 
 /** The number of characteristics supporting the Reliable Write property */
@@ -115,7 +115,7 @@
 #define CY_BLE_GATT_RELIABLE_CHAR_LENGTH            (0x0000u)
 
 /** The size of the cy_ble_attValues array */
-#define CY_BLE_GATT_DB_ATT_VAL_COUNT                (0x7Eu)
+#define CY_BLE_GATT_DB_ATT_VAL_COUNT                (0x7Fu)
 
 /** The size of the cy_ble_attValuesLen array */
 #define CY_BLE_GATT_DB_ATT_VAL_LEN_COUNT            (0x0Cu)

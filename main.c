@@ -23,14 +23,19 @@ TaskHandle_t xPPBHandle = NULL;
 
 EventGroupHandle_t xConnectFourEventGroup;
 
-uint8_t board_state_curr[BOARD_SIZE];
-bool brd_rdy;
+uint8_t board_state_curr[BOARD_SIZE + 1];
 
 TimerHandle_t timer_handle;
 TaskHandle_t ble_task_handle;
+
 QueueHandle_t ble_cmdQ;
 QueueHandle_t xLightQueue;
 QueueHandle_t xPieceQueue;
+QueueHandle_t xBoardQueue;
+
+cyhal_uart_t rpi_uart_obj;
+#define RX_BUF_SIZE     43
+size_t rx_length = RX_BUF_SIZE;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Plain Functions
@@ -97,22 +102,6 @@ void leds_init()
 {
     // TODO: Add serial indication if an error occurred for a specific LED
     cy_rslt_t rslt;
-
-    // LED1 (ON - OFF)
-    rslt = cyhal_gpio_init(
-        PIN_ONOFF_LED,
-        CYHAL_GPIO_DIR_OUTPUT,
-        CYHAL_GPIO_DRIVE_STRONG,
-        false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: ON/OFF LED failed to initialize\n\r");
-        };
-    }
 
     // LED 2 (Player 2 Turn)
     rslt = cyhal_gpio_init(
@@ -250,6 +239,10 @@ void task_state_manager(void *param)
 
     BaseType_t rtos_api_result;
 
+    char board_from_pi[500];
+
+    uint8_t p2_move;
+
     /* Suppress warning for unused parameter */
     (void)param;
 
@@ -287,15 +280,16 @@ void task_state_manager(void *param)
                 cyhal_gpio_write(PIN_GAME_STATE_LED_B, false);
                 cyhal_gpio_write(PIN_GAME_STATE_LED_G, false);
 
-                // Should I be clearing all bits here?
+                // wait for push button
                 xEventGroupWaitBits(
                     xConnectFourEventGroup, 
                     EVENT_PASS_TURN_MASK,
                     pdTRUE,
                     pdTRUE,
                     portMAX_DELAY);
+                
+                // Player 1 should have put a piece in at this point
 
-                /*
                 rtos_api_result = xQueueReceive(xLightQueue, &light_value, portMAX_DELAY);
                 if (rtos_api_result == pdFALSE)
                 {
@@ -309,14 +303,39 @@ void task_state_manager(void *param)
                     printf("Dropper is jammed! Player 1 intervention required.\n\r");
                     continue; // stay in p1 turn state
                 } 
-                */
+
+                // Wait for board state from rpi, and send values over ble as well as player 2 turn
+                xQueueReceive(xBoardQueue, board_from_pi, portMAX_DELAY);
+                printf("board received in sm: %s", board_from_pi);
+
+                // Decode char
+                for (int i = 0; i < 42; i++)
+                {
+                    if (board_from_pi[i] == '0')
+                    {
+                        board_state_curr[i] = 0;
+                    }
+                    else if (board_from_pi[i] == '1')
+                    {
+                        board_state_curr[i] = 1;
+                    }
+                    else if (board_from_pi[i] == '2')
+                    {
+                        board_state_curr[i] = 2;
+                    }
+                    else 
+                    {
+                        printf("ERROR: Received an invalid piece value from RPi: %c\n\r", board_from_pi[i]);
+                    }
+                }
+                board_state_curr[42] = 1;
 
                 STATE = STATE_P2_TURN;
                 break;
 
             case STATE_P2_TURN:
                 printf("* --- Currently in Player 2's Turn state        --- *\n\r");
-                uint8_t p2_move;
+
                 // Set LEDs
                 cyhal_gpio_write(PIN_GAME_STATE_LED_R, false);
                 cyhal_gpio_write(PIN_GAME_STATE_LED_B, true);
@@ -329,9 +348,34 @@ void task_state_manager(void *param)
                 printf("move received in sm: %x \n\r", p2_move);
                 // Move dropper unit here
 
-                // Replace this with reading from pi
-                board_state_curr[p2_move] = YELLOW_PIECE;
+                // test
+                //board_state_curr[p2_move] = YELLOW_PIECE;
 
+                // Wait for board state from rpi, and send values over ble as well as player 1 turn
+                xQueueReceive(xBoardQueue, board_from_pi, portMAX_DELAY);
+                printf("board received in sm: %s", board_from_pi);
+
+                // Decode char
+                for (int i = 0; i < 42; i++)
+                {
+                    if (board_from_pi[i] == '0')
+                    {
+                        board_state_curr[i] = 0;
+                    }
+                    else if (board_from_pi[i] == '1')
+                    {
+                        board_state_curr[i] = 1;
+                    }
+                    else if (board_from_pi[i] == '2')
+                    {
+                        board_state_curr[i] = 2;
+                    }
+                    else 
+                    {
+                        printf("ERROR: Received an invalid piece value from RPi: %c\n\r", board_from_pi[i]);
+                    }
+                }
+                board_state_curr[42] = 0;
                 /* Send response to GATT Client device */
                 ble_write_response();
                     
@@ -392,6 +436,10 @@ int main(void)
     printf("* ------------------------------------------------------------- *\n\r");
     printf("\n\r");
 
+    printf("* -- Enabling Interrupts\n\r");
+	/* Enable global interrupts */
+	__enable_irq();
+
     printf("* --- Initializing LEDs                                     --- *\n\r");
     leds_init();
 
@@ -402,8 +450,8 @@ int main(void)
         CYHAL_GPIO_DRIVE_NONE,
         false);
 
-    printf("* --- Turning on Power LED                                  --- *\n\r");
-    cyhal_gpio_write(PIN_ONOFF_LED, true);
+    printf("* --- Initializing Light Sensor                             --- *\n\r");
+    light_sensor_init();
 
     printf("* --- Playing startup sound                                 --- *\n\r");
     play_sound(SOUND_STARTUP);
@@ -416,13 +464,10 @@ int main(void)
     }
 
     // Initialize board to empty (remove in production)
-    for (uint8_t i = 0; i < BOARD_SIZE; i++)
+    for (uint8_t i = 0; i < BOARD_SIZE + 1; i++)
     {
         board_state_curr[i] = 0;
     }
-
-    printf("* --- Initializing Light Sensor                             --- *\n\r");
-    light_sensor_init();
 
     // FreeRTOS things
     ble_cmdQ = xQueueCreate(BLE_CMD_Q_LEN, sizeof(uint8_t));
@@ -430,6 +475,7 @@ int main(void)
 
     xLightQueue = xQueueCreate(1, sizeof(uint8_t));
     xPieceQueue = xQueueCreate(1, sizeof(uint8_t));
+    xBoardQueue = xQueueCreate(1, sizeof(char[43]));
 
     
     xTaskCreate(
@@ -465,15 +511,13 @@ int main(void)
         4,
         NULL);
     
-    /*
     xTaskCreate(
         task_light_sensor,
         "Light Sensor",
         configMINIMAL_STACK_SIZE,
         NULL,
-        4,
+        3,
         NULL);
-    */
 
     printf("* --- Starting task scheduler                               --- *\n\r");
 

@@ -11,14 +11,16 @@
 #include "cy_retarget_io.h"
 #include "main.h"
 #include "light_sensor_task.h"
+#include <stdio.h>
+#include <string.h>
+#include <stdio.h>
 
 #include "FreeRTOS.h"
 #include "task.h"
 #include "queue.h"
 #include "timers.h"
 
-static cyhal_i2c_t light_sensor_i2c_obj;
-static uint16_t ALS_SUBORDINATE_ADDR = (uint16_t)(0x29);
+cyhal_i2c_t light_sensor_i2c_obj;
 
 // Could potentially turn this into a one shot function -
 // Don't necessarily need to constantly check light value
@@ -33,14 +35,16 @@ void task_light_sensor(void *param)
     uint8_t Write0[1], Write1[1], Write2[1], Write3[1];
 
     // Read Data_CH1 Lower bits
-    Write0[0] = (uint8_t)(0x88);
-    Write1[0] = (uint8_t)(0x89);
-    Write2[0] = (uint8_t)(0x8A);
-    Write3[0] = (uint8_t)(0x8B);
+    Write0[0] = 0x88;
+    Write1[0] = 0x89;
+    Write2[0] = 0x8A;
+    Write3[0] = 0x8B;
 
     // Read Data_CH1 upper bits
     for (;;)
     {
+        vTaskDelay(500);
+        printf("loop iter\n\r");
         /* Use cyhal_i2c_master_write to write the required data to the device. */
         /* Send the register address, do not generate a stop condition.  This will result in */
         /* a restart condition. */
@@ -236,7 +240,6 @@ void task_light_sensor(void *param)
         printf("Channel 0: %d\n\n\n", (data3 << 8) | Data2[0]);
 
         xQueueOverwrite(xLightQueue, &data1);
-        vTaskDelay(500);
         printf("light sensor loop\n\r");
     }
 }
@@ -262,22 +265,26 @@ void light_sensor_init()
     {
         printf("error initializing light sensor 2 \n\r");
     }
-    
+
+    Cy_SysLib_Delay(200);
 
     // turn on the device by writing to config buffer
     uint8_t config_buffer[2];
     config_buffer[0] = 0x80;
     config_buffer[1] = 0x01;
 
-    rslt = cyhal_i2c_master_write(
-        &light_sensor_i2c_obj,
-        ALS_SUBORDINATE_ADDR,          // I2C Address
-        config_buffer,		  // Array of data to write
-        2,					  // Number of bytes to write
-        0,					  // Block until completed
-        true);				  // Do generate Stop Condition
-    if (rslt != CY_RSLT_SUCCESS)
+    if ( CY_RSLT_SUCCESS == cyhal_i2c_master_write(
+                                &light_sensor_i2c_obj,
+                                ALS_SUBORDINATE_ADDR, // I2C Address
+                                config_buffer,		  // Array of data to write
+                                2,					  // Number of bytes to write
+                                0,					  // Block until completed
+                                true) )				  // Do generate Stop Condition
     {
-        printf("error initializing light sensor 3 \n\r");
+        printf("successfully initialized light sensor\n\r");
+    }
+    else 
+    {
+        printf("error initializing light sensor 3\n\r");
     }
 }

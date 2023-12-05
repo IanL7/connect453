@@ -18,8 +18,11 @@
 
 extern QueueHandle_t xLightQueue;
 
+#define ALS_SUBORDINATE_ADDR 0x29
+
 /* Function Prototypes */
 void light_sensor_init();
 void task_light_sensor(void *pvParameters);
+void test_light_sensor();
 
 #endif /* LIGHT_SENSOR_TASK_H_ */

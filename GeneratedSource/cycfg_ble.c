@@ -198,7 +198,7 @@
         /* USR_BRD */
         0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
         0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
-        0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
+        0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u, 0x00u,
 
         /* Characteristic User Description */
         (uint8_t)'B', (uint8_t)'O', (uint8_t)'A', (uint8_t)'R', (uint8_t)'D', (uint8_t)' ', (uint8_t)'S', (uint8_t)'T',
@@ -236,8 +236,8 @@
         { 0x000Du, (void *)&cy_ble_attValues[54] }, /* Characteristic User Description */
         { 0x0010u, (void *)&cy_ble_attUuid128[2] }, /* BOARD UUID */
         { 0x0010u, (void *)&cy_ble_attUuid128[3] }, /* USR_BRD UUID */
-        { 0x002Au, (void *)&cy_ble_attValues[67] }, /* USR_BRD */
-        { 0x0011u, (void *)&cy_ble_attValues[109] }, /* Characteristic User Description */
+        { 0x002Bu, (void *)&cy_ble_attValues[67] }, /* USR_BRD */
+        { 0x0011u, (void *)&cy_ble_attValues[110] }, /* Characteristic User Description */
     };
 
     /* GATT Data Base */
@@ -261,7 +261,7 @@
         { 0x0010u, 0x2901u /* Characteristic User Description */, 0x01020001u /* rd        */, 0x0010u, {{0x000Du, (void *)&cy_ble_attValuesLen[7]}} },
         { 0x0011u, 0x2800u /* Primary service                 */, 0x08000001u /*           */, 0x0014u, {{0x0010u, (void *)&cy_ble_attValuesLen[8]}} },
         { 0x0012u, 0x2803u /* Characteristic                  */, 0x00020001u /* rd        */, 0x0014u, {{0x0010u, (void *)&cy_ble_attValuesLen[9]}} },
-        { 0x0013u, 0x242Bu /* USR_BRD                         */, 0x09020001u /* rd        */, 0x0014u, {{0x002Au, (void *)&cy_ble_attValuesLen[10]}} },
+        { 0x0013u, 0x242Bu /* USR_BRD                         */, 0x09020001u /* rd        */, 0x0014u, {{0x002Bu, (void *)&cy_ble_attValuesLen[10]}} },
         { 0x0014u, 0x2901u /* Characteristic User Description */, 0x01020001u /* rd        */, 0x0014u, {{0x0011u, (void *)&cy_ble_attValuesLen[11]}} },
     };
 #endif /* (CY_BLE_GATT_ROLE_SERVER) */

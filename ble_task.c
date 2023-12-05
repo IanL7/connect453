@@ -538,14 +538,13 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
           * client device */
         case CY_BLE_EVT_GATTS_READ_CHAR_VAL_ACCESS_REQ:
         {
-            printf("BLE Stack Event : CY_BLE_EVT_GATTS_READ_CHAR_VAL_ACCESS_REQ");
+            //printf("BLE Stack Event : CY_BLE_EVT_GATTS_READ_CHAR_VAL_ACCESS_REQ");
             read_req_param = (cy_stc_ble_gatts_char_val_read_req_t *)eventParam;
 
             if (CY_BLE_BOARD_USR_BRD_CHAR_HANDLE == read_req_param->attrHandle)
             {
-            	printf("[INFO] : trying to read from USR_BRD characteristic\r\n");
-
-            	CY_BLE_GATT_DB_ATTR_SET_GEN_VALUE(CY_BLE_BOARD_USR_BRD_CHAR_HANDLE,&board_state_curr,42);
+            	//printf("[INFO] : trying to read from USR_BRD characteristic\r\n");
+            	CY_BLE_GATT_DB_ATTR_SET_GEN_VALUE(CY_BLE_BOARD_USR_BRD_CHAR_HANDLE,&board_state_curr,43);
             }
             break;
         }

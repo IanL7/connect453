@@ -314,7 +314,7 @@
                                                 <Property id="Name" value="BRD_ARRAY"/>
                                                 <Property id="Value" value=""/>
                                                 <Property id="Format" value="f_uint8_array"/>
-                                                <Property id="ByteLength" value="42"/>
+                                                <Property id="ByteLength" value="43"/>
                                             </FieldProperties>
                                         </Field>
                                     </Fields>

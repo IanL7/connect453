@@ -62,7 +62,8 @@
 #define PIN_PAUSE_PB                P10_2
 #define PIN_PLAYER1_LED             P10_1
 #define PIN_PLAYER2_LED             P9_4
-#define PIN_ONOFF_LED               P5_1
+#define PIN_RPI_TX                  P5_1
+#define PIN_RPI_RX                  P5_0
 #define PIN_GAME_STATE_LED_R        P5_3
 #define PIN_GAME_STATE_LED_G        P5_2
 #define PIN_GAME_STATE_LED_B        P5_5

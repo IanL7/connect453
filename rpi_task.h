@@ -16,7 +16,11 @@
 #include "queue.h"
 #include "main.h"
 
+extern QueueHandle_t xBoardQueue;
+
 /* Function Prototypes */
 void task_rpi(void *param);
+static bool equal(char board1[], char board2[]);
+static void init_prev_board_state();
 
 #endif /* RPI_TASK_H_ */
