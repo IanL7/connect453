@@ -12,7 +12,6 @@
  * Include header files
  *****************************************************************************/
 #include "FreeRTOS.h"
-#include "task.h"
 #include "queue.h"
 #include "main.h"
 

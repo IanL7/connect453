@@ -82,7 +82,7 @@
 #define BLE_TASK_STACK_SIZE     (configMINIMAL_STACK_SIZE * 8)
 #define SM_TASK_STACK_SIZE      (configMINIMAL_STACK_SIZE * 4)
 #define BLE_CMD_Q_LEN           (10u)
-#define LIGHT_THRESHOLD         1000
+#define LIGHT_THRESHOLD         100
 
 
 //extern void rgb_on(cyhal_pwm_t *rgb_obj_r, cyhal_pwm_t *rgb_obj_g, cyhal_pwm_t *rgb_obj_b, int color);

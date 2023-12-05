@@ -235,7 +235,7 @@ void task_state_manager(void *param)
 
     cy_rslt_t rslt;
 
-    uint8_t light_value;
+    uint16_t light_value;
 
     BaseType_t rtos_api_result;
 
@@ -291,6 +291,8 @@ void task_state_manager(void *param)
                 // Player 1 should have put a piece in at this point
 
                 rtos_api_result = xQueueReceive(xLightQueue, &light_value, portMAX_DELAY);
+                printf("Light value received: %d", light_value);
+
                 if (rtos_api_result == pdFALSE)
                 {
                     printf("ERROR: light value not received\n\r");
@@ -299,10 +301,14 @@ void task_state_manager(void *param)
 
                 if (light_value > LIGHT_THRESHOLD)
                 {
-                    play_sound(SOUND_ERROR);
                     printf("Dropper is jammed! Player 1 intervention required.\n\r");
+                    play_sound(SOUND_ERROR);
                     continue; // stay in p1 turn state
                 } 
+                else 
+                {
+                    printf("Dropper is loaded.\n\r");
+                }
 
                 // Wait for board state from rpi, and send values over ble as well as player 2 turn
                 xQueueReceive(xBoardQueue, board_from_pi, portMAX_DELAY);
@@ -473,7 +479,7 @@ int main(void)
     ble_cmdQ = xQueueCreate(BLE_CMD_Q_LEN, sizeof(uint8_t));
     timer_handle = xTimerCreate("Timer", pdMS_TO_TICKS(1000), pdTRUE, NULL, rtos_timer_cb);
 
-    xLightQueue = xQueueCreate(1, sizeof(uint8_t));
+    xLightQueue = xQueueCreate(1, sizeof(uint16_t));
     xPieceQueue = xQueueCreate(1, sizeof(uint8_t));
     xBoardQueue = xQueueCreate(1, sizeof(char[43]));
 
