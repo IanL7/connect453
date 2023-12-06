@@ -33,13 +33,35 @@ QueueHandle_t xLightQueue;
 QueueHandle_t xPieceQueue;
 QueueHandle_t xBoardQueue;
 
-cyhal_uart_t rpi_uart_obj;
-#define RX_BUF_SIZE     43
-size_t rx_length = RX_BUF_SIZE;
+static servo_pwm_obj;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Plain Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
+
+void motors_init()
+{
+    cy_rslt_t rslt;
+
+    /////////////////////////////////////////////////////////////////
+    // Servo (dropper unit)
+    /////////////////////////////////////////////////////////////////
+    /* Initialize PWM on the supplied pin and assign a new clock */
+    rslt = cyhal_pwm_init(&servo_pwm_obj, PIN_SERVO, NULL);
+    /* Stop the PWM output */
+    rslt = cyhal_pwm_stop(&servo_pwm_obj);
+
+    printf("Moving to deposit\r\n");
+        rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 5, 50);
+        rslt = cyhal_pwm_start(&servo_pwm_obj);
+        vTaskDelay(2000);
+
+        printf("Moving to retrieve\r\n");
+        rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 12.5, 50);
+        vTaskDelay(2000);
+
+        rslt = cyhal_pwm_stop(&servo_pwm_obj);
+}
 
 void deposit(int column)
 {
