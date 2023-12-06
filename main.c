@@ -41,6 +41,47 @@ size_t rx_length = RX_BUF_SIZE;
 // Plain Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void deposit(int column)
+{
+
+    // Forward
+    printf("Writing Pin 5.6: 0 , Pin 7.7: 0\n\r");
+    cyhal_gpio_write(P5_6, 0);
+    cyhal_gpio_write(P7_7, 0);
+    cyhal_system_delay_ms(2260);
+
+    if (column == 5)
+    {
+        cyhal_system_delay_ms(636);
+    }
+    else if (column == 4)
+    {
+        cyhal_system_delay_ms(1272);
+    }
+    else if (column == 3)
+    {
+        cyhal_system_delay_ms(1908);
+    }
+    else if (column == 2)
+    {
+        cyhal_system_delay_ms(2544);
+    }
+    else if (column == 1)
+    {
+        cyhal_system_delay_ms(3180);
+    }
+    else if (column == 0)
+    {
+        cyhal_system_delay_ms(3816);
+    }
+
+    // Backward
+    printf("Writing 5.6: 1 , 7.7: 1\n\r");
+    cyhal_gpio_write(P5_6, 1);
+    cyhal_gpio_write(P7_7, 1);
+    cyhal_system_delay_ms(2000);
+}
+
 void play_sound(int sound)
 {
     uint32_t sample;
@@ -497,29 +538,11 @@ int main(void)
 
     rslt = cyhal_gpio_init(P5_6, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
     rslt = cyhal_gpio_init(P7_7, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-    
-    for (;;)
-    {
-        printf("Writing 5.6: 1 , 7.7: 0\n\r");
-        cyhal_gpio_write(P5_6, 1);
-        cyhal_gpio_write(P7_7, 0);
-        cyhal_system_delay_ms(2000);
 
-        printf("Writing 5.6: 0 , 7.7: 0\n\r");
-        cyhal_gpio_write(P5_6, 0);
-        cyhal_gpio_write(P7_7, 0);
-        cyhal_system_delay_ms(2000);
-
-        printf("Writing 5.6: 0 , 7.7: 1\n\r");
-        cyhal_gpio_write(P5_6, 0);
-        cyhal_gpio_write(P7_7, 1);
-        cyhal_system_delay_ms(2000);
-
-        printf("Writing 5.6: 1 , 7.7: 1\n\r");
-        cyhal_gpio_write(P5_6, 1);
-        cyhal_gpio_write(P7_7, 1);
-        cyhal_system_delay_ms(2000);
-    }
+    // Stop linear actuator (remove in production)
+    printf("Writing 5.6: 1 , 7.7: 0\n\r");
+    cyhal_gpio_write(P5_6, 1);
+    cyhal_gpio_write(P7_7, 0);
 
     
     xTaskCreate(
@@ -538,7 +561,6 @@ int main(void)
         3,
         &xSMHandle);
     
-
     xTaskCreate(
         task_BLE,
         "BLE Process",
