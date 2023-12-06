@@ -88,7 +88,7 @@ void task_servo_deposit(void *param)
             portMAX_DELAY);
 
         printf("Moving to deposit\r\n");
-        rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 5, 50);
+        rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 6.25, 50);
         rslt = cyhal_pwm_start(&servo_pwm_obj);
         vTaskDelay(2000);
 
