@@ -33,7 +33,7 @@ QueueHandle_t xLightQueue;
 QueueHandle_t xPieceQueue;
 QueueHandle_t xBoardQueue;
 
-static servo_pwm_obj;
+static cyhal_pwm_t servo_pwm_obj;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Plain Functions
@@ -48,23 +48,35 @@ void motors_init()
     /////////////////////////////////////////////////////////////////
     /* Initialize PWM on the supplied pin and assign a new clock */
     rslt = cyhal_pwm_init(&servo_pwm_obj, PIN_SERVO, NULL);
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        printf("Failed to initialize Servo\n\r");
+    }
     /* Stop the PWM output */
     rslt = cyhal_pwm_stop(&servo_pwm_obj);
 
-    printf("Moving to deposit\r\n");
-        rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 5, 50);
-        rslt = cyhal_pwm_start(&servo_pwm_obj);
-        vTaskDelay(2000);
-
-        printf("Moving to retrieve\r\n");
-        rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 12.5, 50);
-        vTaskDelay(2000);
-
-        rslt = cyhal_pwm_stop(&servo_pwm_obj);
+    rslt = cyhal_gpio_init(P5_6, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        printf("Failed to initialize Linear Actuator 1\n\r");
+    }
+    rslt = cyhal_gpio_init(P7_7, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        printf("Failed to initialize Linear Actuator 2\n\r");
+    }
 }
 
 void deposit(int column)
 {
+    if (column > 6 || column < 0)
+    {
+        printf("Received an invalid column number from P2. Not depositing piece\n\r");
+        return;
+    }
+
+    cy_rslt_t rslt;
+    int back_time = 2260;
 
     // Forward
     printf("Writing Pin 5.6: 0 , Pin 7.7: 0\n\r");
@@ -75,33 +87,56 @@ void deposit(int column)
     if (column == 5)
     {
         cyhal_system_delay_ms(636);
+        back_time += 636;
     }
     else if (column == 4)
     {
         cyhal_system_delay_ms(1272);
+        back_time += 1272;
     }
     else if (column == 3)
     {
         cyhal_system_delay_ms(1908);
+        back_time += 1908;
     }
     else if (column == 2)
     {
         cyhal_system_delay_ms(2544);
+        back_time += 2544;
     }
     else if (column == 1)
     {
         cyhal_system_delay_ms(3180);
+        back_time += 3180;
     }
     else if (column == 0)
     {
         cyhal_system_delay_ms(3816);
+        back_time += 3816;
     }
+
+    // Deposit piece
+    printf("Moving to deposit\r\n");
+    rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 5, 50);
+    rslt = cyhal_pwm_start(&servo_pwm_obj);
+    cyhal_system_delay_ms(2000);
+
+    printf("Moving to retrieve\r\n");
+    rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 12.5, 50);
+    cyhal_system_delay_ms(2000);
+
+    rslt = cyhal_pwm_stop(&servo_pwm_obj);
 
     // Backward
     printf("Writing 5.6: 1 , 7.7: 1\n\r");
     cyhal_gpio_write(P5_6, 1);
     cyhal_gpio_write(P7_7, 1);
-    cyhal_system_delay_ms(2000);
+    cyhal_system_delay_ms(back_time);
+
+    // Stop
+    printf("Writing 5.6: 1 , 7.7: 0\n\r");
+    cyhal_gpio_write(P5_6, 1);
+    cyhal_gpio_write(P7_7, 0);
 }
 
 void play_sound(int sound)
@@ -415,10 +450,9 @@ void task_state_manager(void *param)
                 // Cleanup move 
                 p2_move = p2_move & 0x07;
                 printf("move received in sm: %x \n\r", p2_move);
-                // Move dropper unit here
 
-                // test
-                //board_state_curr[p2_move] = YELLOW_PIECE;
+                // Control motors to deposit piece
+                deposit(p2_move);
 
                 // Wait for board state from rpi, and send values over ble as well as player 1 turn
                 xQueueReceive(xBoardQueue, board_from_pi, portMAX_DELAY);
@@ -522,17 +556,8 @@ int main(void)
     printf("* --- Initializing Light Sensor                             --- *\n\r");
     light_sensor_init();
 
-    printf("* --- Initializing Linear Actuator Control                  --- *\n\r");
-    rslt = cyhal_gpio_init(P5_6, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("Failed to initialized Pin 5.6\n\r");
-    }
-    rslt = cyhal_gpio_init(P7_7, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("Failed to initialized Pin 7.7\n\r");
-    }
+    printf("* --- Initializing Motor Control                            --- *\n\r");
+    motors_init();
 
     printf("* --- Playing startup sound                                 --- *\n\r");
     play_sound(SOUND_STARTUP);

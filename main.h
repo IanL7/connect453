@@ -72,6 +72,7 @@
 #define PIN_WINNER_LED_B            P10_2
 #define PIN_I2C_SCL                 P9_0
 #define PIN_I2C_SDA                 P9_1
+#define PIN_SERVO                   P6_3
 
 // Sounds
 #define SOUND_STARTUP               0
