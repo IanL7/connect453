@@ -5,13 +5,6 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "main.h"
-/* RTOS header files */
-#include <FreeRTOS.h>
-#include <FreeRTOSConfig.h>
-#include <task.h>
-#include <semphr.h>
-#include <event_groups.h>
-
 /*******************************************************************************
 * Global Variables
 ******************************************************************************/
