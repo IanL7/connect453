@@ -69,6 +69,7 @@ void motors_init()
 
 void deposit(int column)
 {
+    // Blue on long lead of proto board
     if (column > 6 || column < 0)
     {
         printf("Received an invalid column number from P2. Not depositing piece\n\r");
@@ -82,38 +83,43 @@ void deposit(int column)
     printf("Writing Pin 5.6: 0 , Pin 7.7: 0\n\r");
     cyhal_gpio_write(P5_6, 0);
     cyhal_gpio_write(P7_7, 0);
-    cyhal_system_delay_ms(2260);
+    cyhal_system_delay_ms(565);
 
     if (column == 5)
+    {
+        cyhal_system_delay_ms(159);
+        back_time += 159;
+    }
+    else if (column == 4)
+    {
+        cyhal_system_delay_ms(318);
+        back_time += 318;
+    }
+    else if (column == 3)
+    {
+        cyhal_system_delay_ms(477);
+        back_time += 477;
+    }
+    else if (column == 2)
     {
         cyhal_system_delay_ms(636);
         back_time += 636;
     }
-    else if (column == 4)
-    {
-        cyhal_system_delay_ms(1272);
-        back_time += 1272;
-    }
-    else if (column == 3)
-    {
-        cyhal_system_delay_ms(1908);
-        back_time += 1908;
-    }
-    else if (column == 2)
-    {
-        cyhal_system_delay_ms(2544);
-        back_time += 2544;
-    }
     else if (column == 1)
     {
-        cyhal_system_delay_ms(3180);
-        back_time += 3180;
+        cyhal_system_delay_ms(795);
+        back_time += 795;
     }
     else if (column == 0)
     {
-        cyhal_system_delay_ms(3816);
-        back_time += 3816;
+        cyhal_system_delay_ms(954);
+        back_time += 954;
     }
+
+    // Stop Linear Actuator
+    printf("Writing 5.6: 1 , 7.7: 0\n\r");
+    cyhal_gpio_write(P5_6, 1);
+    cyhal_gpio_write(P7_7, 0);
 
     // Deposit piece
     printf("Moving to deposit\r\n");
@@ -132,11 +138,6 @@ void deposit(int column)
     cyhal_gpio_write(P5_6, 1);
     cyhal_gpio_write(P7_7, 1);
     cyhal_system_delay_ms(back_time);
-
-    // Stop
-    printf("Writing 5.6: 1 , 7.7: 0\n\r");
-    cyhal_gpio_write(P5_6, 1);
-    cyhal_gpio_write(P7_7, 0);
 }
 
 void play_sound(int sound)
@@ -585,6 +586,19 @@ int main(void)
 
     rslt = cyhal_gpio_init(P5_6, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
     rslt = cyhal_gpio_init(P7_7, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
+
+    // Stop linear actuator (remove in production)
+    printf("Writing 5.6: 1 , 7.7: 0\n\r");
+    cyhal_gpio_write(P5_6, 1);
+    cyhal_gpio_write(P7_7, 0);
+    cyhal_system_delay_ms(1000);
+
+    // Go backward a bit incase linear actuator not fully back
+    // Can probably remove in production
+    printf("Writing 5.6: 1 , 7.7: 1\n\r");
+    cyhal_gpio_write(P5_6, 1);
+    cyhal_gpio_write(P7_7, 1);
+    cyhal_system_delay_ms(5000);
 
     // Stop linear actuator (remove in production)
     printf("Writing 5.6: 1 , 7.7: 0\n\r");
