@@ -45,7 +45,7 @@ void task_rpi(void *param)
                 prev_board_state[i] = pcInputString[i];
             } 
 
-            printf("Rx'd: %s\n", pcInputString);
+            //printf("Rx'd: %s\n", pcInputString);
             
             memset(pcInputString, 0, 500);
             cInputIndex = 0;
