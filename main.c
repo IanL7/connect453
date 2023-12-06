@@ -55,27 +55,27 @@ int main(void)
     printf("Initializing GPIO\n\r");
     rslt = cyhal_gpio_init(P5_6, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
     rslt = cyhal_gpio_init(P7_7, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-
+    
     for (;;)
     {
         printf("Writing 5.6: 1 , 7.7: 0\n\r");
         cyhal_gpio_write(P5_6, 1);
         cyhal_gpio_write(P7_7, 0);
-        cyhal_system_delay_ms(5000);
+        cyhal_system_delay_ms(2000);
 
         printf("Writing 5.6: 0 , 7.7: 0\n\r");
         cyhal_gpio_write(P5_6, 0);
         cyhal_gpio_write(P7_7, 0);
-        cyhal_system_delay_ms(5000);
+        cyhal_system_delay_ms(2000);
 
         printf("Writing 5.6: 0 , 7.7: 1\n\r");
         cyhal_gpio_write(P5_6, 0);
         cyhal_gpio_write(P7_7, 1);
-        cyhal_system_delay_ms(5000);
+        cyhal_system_delay_ms(2000);
 
         printf("Writing 5.6: 1 , 7.7: 1\n\r");
         cyhal_gpio_write(P5_6, 1);
         cyhal_gpio_write(P7_7, 1);
-        cyhal_system_delay_ms(5000);
+        cyhal_system_delay_ms(2000);
     }
 }
