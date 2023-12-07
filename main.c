@@ -47,7 +47,7 @@ void motors_init()
     // Servo (dropper unit)
     /////////////////////////////////////////////////////////////////
     /* Initialize PWM on the supplied pin and assign a new clock */
-    rslt = cyhal_pwm_init(&servo_pwm_obj, PIN_SERVO, NULL);
+    rslt = cyhal_pwm_init(&servo_pwm_obj, P7_2, NULL);
     if (rslt != CY_RSLT_SUCCESS)
     {
         printf("Failed to initialize Servo\n\r");
@@ -123,7 +123,7 @@ void deposit(int column)
 
     // Deposit piece
     printf("Moving to deposit\r\n");
-    rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 5, 50);
+    rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 6.25, 50);
     rslt = cyhal_pwm_start(&servo_pwm_obj);
     cyhal_system_delay_ms(2000);
 
@@ -555,7 +555,7 @@ int main(void)
         false);
 
     printf("* --- Initializing Light Sensor                             --- *\n\r");
-    light_sensor_init();
+    //light_sensor_init();
 
     printf("* --- Initializing Motor Control                            --- *\n\r");
     motors_init();
@@ -605,6 +605,11 @@ int main(void)
     cyhal_gpio_write(P5_6, 1);
     cyhal_gpio_write(P7_7, 0);
 
+    printf("testing deposit 0\n\r");
+    deposit(0);
+
+    printf("testing deposit 6\n\r");
+    deposit(6);
     
     xTaskCreate(
         task_pole_passturn_pb,
@@ -638,6 +643,7 @@ int main(void)
         4,
         NULL);
     
+    /*
     xTaskCreate(
         task_light_sensor,
         "Light Sensor",
@@ -645,6 +651,7 @@ int main(void)
         NULL,
         3,
         NULL);
+    */
 
     printf("* --- Starting task scheduler                               --- *\n\r");
 
