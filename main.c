@@ -39,22 +39,24 @@ static cyhal_pwm_t servo_pwm_obj;
 // Plain Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
+// Inits P5_6 and P7_7 as GPIO and outputs 0 on both 
 void lin_act_init()
 {
     cy_rslt_t rslt;
 
-    rslt = cyhal_gpio_init(P5_6, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
+    rslt = cyhal_gpio_init(PIN_LIN_FORE, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
     if (rslt != CY_RSLT_SUCCESS)
     {
-        printf("Failed to initialize Linear Actuator 1\n\r");
+        printf("ERROR: Failed to initialize Linear Actuator Fore\n\r");
     }
-    rslt = cyhal_gpio_init(P7_7, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
+    rslt = cyhal_gpio_init(PIN_LIN_BACK, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
     if (rslt != CY_RSLT_SUCCESS)
     {
-        printf("Failed to initialize Linear Actuator 2\n\r");
+        printf("ERROR: Failed to initialize Linear Actuator Back\n\r");
     }
 }
 
+// Inits P6_3 as PWM and stops the PWM
 void servo_pwm_init()
 {
      /////////////////////////////////////////////////////////////////
@@ -65,79 +67,101 @@ void servo_pwm_init()
     rslt = cyhal_pwm_init(&servo_pwm_obj, P6_3, NULL);
     if (rslt != CY_RSLT_SUCCESS)
     {
-        printf("Failed to initialize Servo\n\r");
+        printf("ERROR: Failed to initialize Servo - PWM\n\r");
     }
     /* Stop the PWM output */
     rslt = cyhal_pwm_stop(&servo_pwm_obj);
 }
 
+// Inits P6_3 as GPIO and outputs 0 to P6_3
 void servo_gpio_init()
 {
-    cyhal_gpio_init(
-    P6_3,
-    CYHAL_GPIO_DIR_OUTPUT,
-    CYHAL_GPIO_DRIVE_STRONG,
-    0);
+    cy_rslt_t rslt;
+
+    rslt = cyhal_gpio_init(
+        PIN_SERVO,
+        CYHAL_GPIO_DIR_OUTPUT,
+        CYHAL_GPIO_DRIVE_STRONG,
+        0);
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        printf("ERROR: Failed to initialize Servo - GPIO\n\r");
+    }
+
 }
 
+// Control the linear actuator
+//      - delay: ms
+void control_lin(int dir, int delay)
+{
+    switch (dir)
+    {
+        case FORWARD:
+            cyhal_gpio_write(PIN_LIN_FORE, 1);
+            cyhal_gpio_write(PIN_LIN_BACK, 0);
+            break;
+        case BACKWARD:
+            cyhal_gpio_write(PIN_LIN_FORE, 0);
+            cyhal_gpio_write(PIN_LIN_BACK, 1);
+            break;
+        case STOP:
+            cyhal_gpio_write(PIN_LIN_FORE, 0);
+            cyhal_gpio_write(PIN_LIN_BACK, 0);
+            break;
+    }
+    cyhal_system_delay_ms(delay);
+}
 
 void deposit(int column)
 {
     // Blue on long lead of proto board
     if (column > 6 || column < 0)
     {
-        printf("Received an invalid column number from P2. Not depositing piece\n\r");
+        printf("ERROR: Received an invalid column number from P2. Not depositing piece\n\r");
         return;
     }
-
     cy_rslt_t rslt;
-    int back_time = 1694;
 
-    // Forward
-    printf("Writing Pin 5.6: 0 , Pin 7.7: 0\n\r");
-    cyhal_gpio_write(P5_6, 0);
-    cyhal_gpio_write(P7_7, 0);
-    cyhal_system_delay_ms(1500);
+    // --- Move forward ---
 
-    if (column == 5)
+    int move_time = 1500;
+    switch (column)
     {
-        cyhal_system_delay_ms(650);
-        back_time += 650;
+        case 6:
+            control_lin(FORWARD, move_time);
+            break;
+        case 5:
+            move_time += 650;
+            control_lin(FORWARD, move_time);
+            break;
+        case 4:
+            move_time += 1300;
+            control_lin(FORWARD, move_time);
+            break;
+        case 3:
+            move_time += 1950;
+            control_lin(FORWARD, move_time);
+            break;
+        case 2:
+            move_time += 2600;
+            control_lin(FORWARD, move_time);
+            break;
+        case 1:
+            move_time += 3250;
+            control_lin(FORWARD, move_time);
+            break;
+        case 0:
+            move_time += 3900;
+            control_lin(FORWARD, move_time);
+            break;
     }
-    else if (column == 4)
-    {
-        cyhal_system_delay_ms(1300);
-        back_time += 1300;
-    }
-    else if (column == 3)
-    {
-        cyhal_system_delay_ms(1950);
-        back_time += 1950;
-    }
-    else if (column == 2)
-    {
-        cyhal_system_delay_ms(2600);
-        back_time += 2600;
-    }
-    else if (column == 1)
-    {
-        cyhal_system_delay_ms(3250);
-        back_time += 3250;
-    }
-    else if (column == 0)
-    {
-        cyhal_system_delay_ms(3900);
-        back_time += 3900;
-    }
+    control_lin(STOP, 0);
 
-    // Stop Linear Actuator
-    printf("Writing 5.6: 1 , 7.7: 0\n\r");
-    cyhal_gpio_write(P5_6, 1);
-    cyhal_gpio_write(P7_7, 0);
+    // --- Deposit piece ---
 
-    // Deposit piece
-
-    cyhal_gpio_free(P6_3);
+    // Reassign servo pin to PWM 
+    // PWM pin on servo seems to need to be grounded if running directly off uController
+    cyhal_gpio_free(PIN_SERVO);
     servo_pwm_init();
 
     printf("Moving to deposit\r\n");
@@ -153,13 +177,12 @@ void deposit(int column)
 
     cyhal_pwm_free(&servo_pwm_obj);
 
+    // Reassign servo pin to GPIO
     servo_gpio_init();
 
-    // Backward
-    printf("Writing 5.6: 1 , 7.7: 1\n\r");
-    cyhal_gpio_write(P5_6, 1);
-    cyhal_gpio_write(P7_7, 1);
-    cyhal_system_delay_ms(back_time);
+    // --- Backup ---
+
+    control_lin(BACKWARD, move_time);
 }
 
 void play_sound(int sound)
@@ -582,6 +605,7 @@ int main(void)
     printf("* --- Initializing Motor Control                            --- *\n\r");
     servo_gpio_init();
     lin_act_init();
+    control_lin(STOP, 0);
 
     printf("* --- Playing startup sound                                 --- *\n\r");
     play_sound(SOUND_STARTUP);
@@ -607,27 +631,7 @@ int main(void)
     xPieceQueue = xQueueCreate(1, sizeof(uint8_t));
     xBoardQueue = xQueueCreate(1, sizeof(char[43]));
 
-    rslt = cyhal_gpio_init(P5_6, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-    rslt = cyhal_gpio_init(P7_7, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-
-    // Stop linear actuator (remove in production)
-    printf("Writing 5.6: 1 , 7.7: 0\n\r");
-    cyhal_gpio_write(P5_6, 1);
-    cyhal_gpio_write(P7_7, 0);
-    cyhal_system_delay_ms(1000);
-
-    // Go backward a bit incase linear actuator not fully back
-    // Can probably remove in production
-    printf("Writing 5.6: 1 , 7.7: 1\n\r");
-    cyhal_gpio_write(P5_6, 1);
-    cyhal_gpio_write(P7_7, 1);
-    cyhal_system_delay_ms(5000);
-
-    // Stop linear actuator (remove in production)
-    printf("Writing 5.6: 1 , 7.7: 0\n\r");
-    cyhal_gpio_write(P5_6, 1);
-    cyhal_gpio_write(P7_7, 0);
-
+    // Tests
     deposit(6);
     deposit(5);
     deposit(4);

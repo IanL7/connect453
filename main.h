@@ -73,6 +73,8 @@
 #define PIN_I2C_SCL                 P9_0
 #define PIN_I2C_SDA                 P9_1
 #define PIN_SERVO                   P6_3
+#define PIN_LIN_BACK                P7_7
+#define PIN_LIN_FORE                P5_6
 
 // Sounds
 #define SOUND_STARTUP               0
@@ -80,11 +82,15 @@
 #define SOUND_BEGIN                 2
 
 // Configurations
-#define BLE_TASK_STACK_SIZE     (configMINIMAL_STACK_SIZE * 8)
-#define SM_TASK_STACK_SIZE      (configMINIMAL_STACK_SIZE * 4)
-#define BLE_CMD_Q_LEN           (10u)
-#define LIGHT_THRESHOLD         100
+#define BLE_TASK_STACK_SIZE         (configMINIMAL_STACK_SIZE * 8)
+#define SM_TASK_STACK_SIZE          (configMINIMAL_STACK_SIZE * 4)
+#define BLE_CMD_Q_LEN               (10u)
+#define LIGHT_THRESHOLD             100
 
+// Linear Actuator
+#define FORWARD                     0       
+#define BACKWARD                    1  
+#define STOP                        2
 
 //extern void rgb_on(cyhal_pwm_t *rgb_obj_r, cyhal_pwm_t *rgb_obj_g, cyhal_pwm_t *rgb_obj_b, int color);
 
