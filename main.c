@@ -39,21 +39,9 @@ static cyhal_pwm_t servo_pwm_obj;
 // Plain Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void motors_init()
+void lin_act_init()
 {
     cy_rslt_t rslt;
-
-    /////////////////////////////////////////////////////////////////
-    // Servo (dropper unit)
-    /////////////////////////////////////////////////////////////////
-    /* Initialize PWM on the supplied pin and assign a new clock */
-    rslt = cyhal_pwm_init(&servo_pwm_obj, P6_3, NULL);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("Failed to initialize Servo\n\r");
-    }
-    /* Stop the PWM output */
-    rslt = cyhal_pwm_stop(&servo_pwm_obj);
 
     rslt = cyhal_gpio_init(P5_6, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
     if (rslt != CY_RSLT_SUCCESS)
@@ -67,6 +55,32 @@ void motors_init()
     }
 }
 
+void servo_pwm_init()
+{
+     /////////////////////////////////////////////////////////////////
+    // Servo (dropper unit)
+    /////////////////////////////////////////////////////////////////
+    cy_rslt_t rslt;
+    /* Initialize PWM on the supplied pin and assign a new clock */
+    rslt = cyhal_pwm_init(&servo_pwm_obj, P6_3, NULL);
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        printf("Failed to initialize Servo\n\r");
+    }
+    /* Stop the PWM output */
+    rslt = cyhal_pwm_stop(&servo_pwm_obj);
+}
+
+void servo_gpio_init()
+{
+    cyhal_gpio_init(
+    P6_3,
+    CYHAL_GPIO_DIR_OUTPUT,
+    CYHAL_GPIO_DRIVE_STRONG,
+    0);
+}
+
+
 void deposit(int column)
 {
     // Blue on long lead of proto board
@@ -77,43 +91,43 @@ void deposit(int column)
     }
 
     cy_rslt_t rslt;
-    int back_time = 2260;
+    int back_time = 1694;
 
     // Forward
     printf("Writing Pin 5.6: 0 , Pin 7.7: 0\n\r");
     cyhal_gpio_write(P5_6, 0);
     cyhal_gpio_write(P7_7, 0);
-    cyhal_system_delay_ms(565);
+    cyhal_system_delay_ms(1500);
 
     if (column == 5)
     {
-        cyhal_system_delay_ms(159);
-        back_time += 159;
+        cyhal_system_delay_ms(650);
+        back_time += 650;
     }
     else if (column == 4)
     {
-        cyhal_system_delay_ms(318);
-        back_time += 318;
+        cyhal_system_delay_ms(1300);
+        back_time += 1300;
     }
     else if (column == 3)
     {
-        cyhal_system_delay_ms(477);
-        back_time += 477;
+        cyhal_system_delay_ms(1950);
+        back_time += 1950;
     }
     else if (column == 2)
     {
-        cyhal_system_delay_ms(636);
-        back_time += 636;
+        cyhal_system_delay_ms(2600);
+        back_time += 2600;
     }
     else if (column == 1)
     {
-        cyhal_system_delay_ms(795);
-        back_time += 795;
+        cyhal_system_delay_ms(3250);
+        back_time += 3250;
     }
     else if (column == 0)
     {
-        cyhal_system_delay_ms(954);
-        back_time += 954;
+        cyhal_system_delay_ms(3900);
+        back_time += 3900;
     }
 
     // Stop Linear Actuator
@@ -122,6 +136,10 @@ void deposit(int column)
     cyhal_gpio_write(P7_7, 0);
 
     // Deposit piece
+
+    cyhal_gpio_free(P6_3);
+    servo_pwm_init();
+
     printf("Moving to deposit\r\n");
     rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 6.25, 50);
     rslt = cyhal_pwm_start(&servo_pwm_obj);
@@ -132,6 +150,10 @@ void deposit(int column)
     cyhal_system_delay_ms(2000);
 
     rslt = cyhal_pwm_stop(&servo_pwm_obj);
+
+    cyhal_pwm_free(&servo_pwm_obj);
+
+    servo_gpio_init();
 
     // Backward
     printf("Writing 5.6: 1 , 7.7: 1\n\r");
@@ -558,7 +580,8 @@ int main(void)
     //light_sensor_init();
 
     printf("* --- Initializing Motor Control                            --- *\n\r");
-    motors_init();
+    servo_gpio_init();
+    lin_act_init();
 
     printf("* --- Playing startup sound                                 --- *\n\r");
     play_sound(SOUND_STARTUP);
@@ -605,11 +628,13 @@ int main(void)
     cyhal_gpio_write(P5_6, 1);
     cyhal_gpio_write(P7_7, 0);
 
-    printf("testing deposit 0\n\r");
-    deposit(0);
-
-    printf("testing deposit 6\n\r");
     deposit(6);
+    deposit(5);
+    deposit(4);
+    deposit(3);
+    deposit(2);
+    deposit(1);
+    deposit(0);
     
     xTaskCreate(
         task_pole_passturn_pb,
