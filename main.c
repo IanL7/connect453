@@ -47,7 +47,7 @@ void motors_init()
     // Servo (dropper unit)
     /////////////////////////////////////////////////////////////////
     /* Initialize PWM on the supplied pin and assign a new clock */
-    rslt = cyhal_pwm_init(&servo_pwm_obj, P7_2, NULL);
+    rslt = cyhal_pwm_init(&servo_pwm_obj, P6_3, NULL);
     if (rslt != CY_RSLT_SUCCESS)
     {
         printf("Failed to initialize Servo\n\r");
