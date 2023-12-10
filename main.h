@@ -73,8 +73,8 @@
 #define PIN_I2C_SCL                 P9_0
 #define PIN_I2C_SDA                 P9_1
 #define PIN_SERVO                   P6_3
-#define PIN_LIN_BACK                P7_7
-#define PIN_LIN_FORE                P5_6
+#define PIN_LIN_BACK                P7_7    // Connect to brown lead of linear actuator
+#define PIN_LIN_FORE                P5_6    // Connect to blue lead of linear actuator
 
 // Sounds
 #define SOUND_STARTUP               0

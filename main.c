@@ -92,9 +92,9 @@ void servo_gpio_init()
 
 // Control the linear actuator
 //      - delay: ms
-void control_lin(int dir, int delay)
+void control_lin(int action, int delay)
 {
-    switch (dir)
+    switch (action)
     {
         case FORWARD:
             cyhal_gpio_write(PIN_LIN_FORE, 1);
@@ -112,9 +112,9 @@ void control_lin(int dir, int delay)
     cyhal_system_delay_ms(delay);
 }
 
+// Deposit a piece - move linear actuator and servo
 void deposit(int column)
 {
-    // Blue on long lead of proto board
     if (column > 6 || column < 0)
     {
         printf("ERROR: Received an invalid column number from P2. Not depositing piece\n\r");
@@ -128,39 +128,34 @@ void deposit(int column)
     switch (column)
     {
         case 6:
-            control_lin(FORWARD, move_time);
             break;
         case 5:
             move_time += 650;
-            control_lin(FORWARD, move_time);
             break;
         case 4:
             move_time += 1300;
-            control_lin(FORWARD, move_time);
             break;
         case 3:
             move_time += 1950;
-            control_lin(FORWARD, move_time);
             break;
         case 2:
             move_time += 2600;
-            control_lin(FORWARD, move_time);
             break;
         case 1:
             move_time += 3250;
-            control_lin(FORWARD, move_time);
             break;
         case 0:
             move_time += 3900;
-            control_lin(FORWARD, move_time);
             break;
     }
-    control_lin(STOP, 0);
+    control_lin(FORWARD, move_time);
+    control_lin(STOP, 100);
 
     // --- Deposit piece ---
 
     // Reassign servo pin to PWM 
-    // PWM pin on servo seems to need to be grounded if running directly off uController
+    // PWM pin on servo seems to need to be grounded while 
+    // linear actuator is moving if servo running directly off uController
     cyhal_gpio_free(PIN_SERVO);
     servo_pwm_init();
 
@@ -183,6 +178,7 @@ void deposit(int column)
     // --- Backup ---
 
     control_lin(BACKWARD, move_time);
+    cyhal_system_delay_ms(500); // Wait a bit to prevent fast direction changes
 }
 
 void play_sound(int sound)
@@ -630,6 +626,8 @@ int main(void)
     xLightQueue = xQueueCreate(1, sizeof(uint16_t));
     xPieceQueue = xQueueCreate(1, sizeof(uint8_t));
     xBoardQueue = xQueueCreate(1, sizeof(char[43]));
+
+    control_lin(BACKWARD, 2000);
 
     // Tests
     deposit(6);
