@@ -8,6 +8,8 @@
 #include "ble_task.h"
 #include "light_sensor_task.h"
 #include "rpi_task.h"
+#include "connect453_lib.h"
+#include "state_manager_task.h"
 
 /* RTOS header files */
 #include <FreeRTOS.h>
@@ -18,10 +20,9 @@
 
 // NOTE: PLAYER 1 ASSUMED TO BE YELLOW!
 // NOTE: PLAYER 2 ASSUMED TO BE BLUE!
+
 TaskHandle_t xSMHandle = NULL;
 TaskHandle_t xPPBHandle = NULL;
-
-EventGroupHandle_t xConnectFourEventGroup;
 
 uint8_t board_state_curr[BOARD_SIZE + 1];
 
@@ -33,502 +34,8 @@ QueueHandle_t xLightQueue;
 QueueHandle_t xPieceQueue;
 QueueHandle_t xBoardQueue;
 
-static cyhal_pwm_t servo_pwm_obj;
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-// Plain Functions
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Inits P5_6 and P7_7 as GPIO and outputs 0 on both 
-void lin_act_init()
-{
-    cy_rslt_t rslt;
-
-    rslt = cyhal_gpio_init(PIN_LIN_FORE, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("ERROR: Failed to initialize Linear Actuator Fore\n\r");
-    }
-    rslt = cyhal_gpio_init(PIN_LIN_BACK, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("ERROR: Failed to initialize Linear Actuator Back\n\r");
-    }
-}
-
-// Inits P6_3 as PWM and stops the PWM
-void servo_pwm_init()
-{
-     /////////////////////////////////////////////////////////////////
-    // Servo (dropper unit)
-    /////////////////////////////////////////////////////////////////
-    cy_rslt_t rslt;
-    /* Initialize PWM on the supplied pin and assign a new clock */
-    rslt = cyhal_pwm_init(&servo_pwm_obj, P6_3, NULL);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("ERROR: Failed to initialize Servo - PWM\n\r");
-    }
-    /* Stop the PWM output */
-    rslt = cyhal_pwm_stop(&servo_pwm_obj);
-}
-
-// Inits P6_3 as GPIO and outputs 0 to P6_3
-void servo_gpio_init()
-{
-    cy_rslt_t rslt;
-
-    rslt = cyhal_gpio_init(
-        PIN_SERVO,
-        CYHAL_GPIO_DIR_OUTPUT,
-        CYHAL_GPIO_DRIVE_STRONG,
-        0);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("ERROR: Failed to initialize Servo - GPIO\n\r");
-    }
-
-}
-
-// Control the linear actuator
-//      - delay: ms
-void control_lin(int action, int delay)
-{
-    switch (action)
-    {
-        case FORWARD:
-            cyhal_gpio_write(PIN_LIN_FORE, 1);
-            cyhal_gpio_write(PIN_LIN_BACK, 0);
-            break;
-        case BACKWARD:
-            cyhal_gpio_write(PIN_LIN_FORE, 0);
-            cyhal_gpio_write(PIN_LIN_BACK, 1);
-            break;
-        case STOP:
-            cyhal_gpio_write(PIN_LIN_FORE, 0);
-            cyhal_gpio_write(PIN_LIN_BACK, 0);
-            break;
-    }
-    cyhal_system_delay_ms(delay);
-}
-
-// Deposit a piece - move linear actuator and servo
-void deposit(int column)
-{
-    if (column > 6 || column < 0)
-    {
-        printf("ERROR: Received an invalid column number from P2. Not depositing piece\n\r");
-        return;
-    }
-    cy_rslt_t rslt;
-
-    // --- Move forward ---
-
-    int move_time = 1500;
-    switch (column)
-    {
-        case 6:
-            break;
-        case 5:
-            move_time += 650;
-            break;
-        case 4:
-            move_time += 1300;
-            break;
-        case 3:
-            move_time += 1950;
-            break;
-        case 2:
-            move_time += 2600;
-            break;
-        case 1:
-            move_time += 3250;
-            break;
-        case 0:
-            move_time += 3900;
-            break;
-    }
-    control_lin(FORWARD, move_time);
-    control_lin(STOP, 100);
-
-    // --- Deposit piece ---
-
-    // Reassign servo pin to PWM 
-    // PWM pin on servo seems to need to be grounded while 
-    // linear actuator is moving if servo running directly off uController
-    cyhal_gpio_free(PIN_SERVO);
-    servo_pwm_init();
-
-    printf("Moving to deposit\r\n");
-    rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 6.25, 50);
-    rslt = cyhal_pwm_start(&servo_pwm_obj);
-    cyhal_system_delay_ms(2000);
-
-    printf("Moving to retrieve\r\n");
-    rslt = cyhal_pwm_set_duty_cycle(&servo_pwm_obj, 12.5, 50);
-    cyhal_system_delay_ms(2000);
-
-    rslt = cyhal_pwm_stop(&servo_pwm_obj);
-
-    cyhal_pwm_free(&servo_pwm_obj);
-
-    // Reassign servo pin to GPIO
-    servo_gpio_init();
-
-    // --- Backup ---
-
-    control_lin(BACKWARD, move_time);
-    cyhal_system_delay_ms(500); // Wait a bit to prevent fast direction changes
-}
-
-void play_sound(int sound)
-{
-    uint32_t sample;
-    cy_rslt_t rslt;
-    cyhal_pwm_t pwm_obj;
-    cyhal_dac_t my_dac_obj;
-    cy_rslt_t dac_result;
-
-    switch (sound)
-    {
-        case SOUND_STARTUP:
-            /* Initialize PWM on the supplied pin and assign a new clock */
-            rslt = cyhal_pwm_init(&pwm_obj, P9_6, NULL);
-            rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 440);
-            /* Start the PWM output */
-            rslt = cyhal_pwm_start(&pwm_obj);
-            cyhal_system_delay_ms(500);
-            rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 523);
-            cyhal_system_delay_ms(500);
-            rslt = cyhal_pwm_stop(&pwm_obj);
-            cyhal_pwm_free(&pwm_obj);
-            break;
-
-        case SOUND_BEGIN:
-            /* Initialize PWM on the supplied pin and assign a new clock */
-            rslt = cyhal_pwm_init(&pwm_obj, P9_6, NULL);
-            rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 523);
-            /* Start the PWM output */
-            rslt = cyhal_pwm_start(&pwm_obj);
-            cyhal_system_delay_ms(500);
-            rslt = cyhal_pwm_stop(&pwm_obj);
-            cyhal_pwm_free(&pwm_obj);
-            break;
-
-        case SOUND_ERROR:
-            /* Initialize DAC, set Pin 9.6 as the DAC output */
-            dac_result = cyhal_dac_init(&my_dac_obj, P9_6);
-
-            /* Check the return of cyhal_dac_init to confirm initialization was successful */
-            if (dac_result != CY_RSLT_SUCCESS)
-            {
-                printf("ERROR: DAC failed to initialize\n\r");
-            }
-            // Play the error sound
-            for (sample = 0; sample < 16344; sample++)
-            {
-                /* Write the 16 bit value as DAC input */
-                cyhal_dac_write(&my_dac_obj, 0xFF * error_sound[sample]);
-
-                // Delay for ~1/8000ths of a second, (sample rate of audio array is 8khz)
-                cyhal_system_delay_us(125);
-            }
-            cyhal_dac_free(&my_dac_obj);
-            break;
-    }
-}
-
-void leds_init()
-{
-    // TODO: Add serial indication if an error occurred for a specific LED
-    cy_rslt_t rslt;
-
-    // LED 2 (Player 2 Turn)
-    rslt = cyhal_gpio_init(
-        PIN_PLAYER2_LED,
-        CYHAL_GPIO_DIR_OUTPUT,
-        CYHAL_GPIO_DRIVE_STRONG,
-        false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: LED P2 failed to initialize\n\r");
-        };
-    }
-
-    // LED 3 (Player 1 Turn)
-    rslt = cyhal_gpio_init(
-        PIN_PLAYER1_LED,
-        CYHAL_GPIO_DIR_OUTPUT,
-        CYHAL_GPIO_DRIVE_STRONG,
-        false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: LED P1 failed to initialize\n\r");
-        };
-    }
-
-    // RGB LED 1
-    rslt = cyhal_gpio_init(
-        PIN_GAME_STATE_LED_R,
-        CYHAL_GPIO_DIR_OUTPUT,
-        CYHAL_GPIO_DRIVE_STRONG,
-        false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: RGB LED 1 - R failed to initialize\n\r");
-        };
-    }
-    rslt = cyhal_gpio_init(
-        PIN_GAME_STATE_LED_G,
-        CYHAL_GPIO_DIR_OUTPUT,
-        CYHAL_GPIO_DRIVE_STRONG,
-        false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: RGB LED 1 - G failed to initialize\n\r");
-        };
-    }
-    rslt = cyhal_gpio_init(
-        PIN_GAME_STATE_LED_B,
-        CYHAL_GPIO_DIR_OUTPUT,
-        CYHAL_GPIO_DRIVE_STRONG,
-        false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: RGB LED 1 - B failed to initialize\n\r");
-        };
-    }
-
-    // RGB LED 2
-    rslt = cyhal_gpio_init(
-        PIN_WINNER_LED_R,
-        CYHAL_GPIO_DIR_OUTPUT,
-        CYHAL_GPIO_DRIVE_STRONG,
-        false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: RGB LED 2 - R failed to initialize\n\r");
-        };
-    }
-    rslt = cyhal_gpio_init(
-        PIN_WINNER_LED_G,
-        CYHAL_GPIO_DIR_OUTPUT,
-        CYHAL_GPIO_DRIVE_STRONG,
-        false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: RGB LED 2 - G failed to initialize\n\r");
-        };
-    }
-    rslt = cyhal_gpio_init(
-        PIN_WINNER_LED_B,
-        CYHAL_GPIO_DIR_OUTPUT,
-        CYHAL_GPIO_DRIVE_STRONG,
-        false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: RGB LED 2 - B failed to initialize\n\r");
-        };
-    }
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-// FreeRTOS tasks
-///////////////////////////////////////////////////////////////////////////////////////////////////////
-
-// Basic implementation - just switch back and forth between player 1 and 2 move
-void task_state_manager(void *param)
-{
-    static int STATE;
-
-    cy_rslt_t rslt;
-
-    uint16_t light_value;
-
-    BaseType_t rtos_api_result;
-
-    char board_from_pi[500];
-
-    uint8_t p2_move;
-
-    /* Suppress warning for unused parameter */
-    (void)param;
-
-    STATE = STATE_INIT;
-
-    for (;;) 
-    {
-        switch (STATE)
-        {     
-            case STATE_INIT:
-                printf("* --- Currently in INIT state                   --- *\n\r");
-
-                cyhal_gpio_write(PIN_GAME_STATE_LED_R, false);
-                cyhal_gpio_write(PIN_GAME_STATE_LED_B, false);
-                cyhal_gpio_write(PIN_GAME_STATE_LED_G, true);
-
-                xEventGroupWaitBits(
-                    xConnectFourEventGroup, 
-                    EVENT_PASS_TURN_MASK,
-                    pdTRUE,
-                    pdTRUE,
-                    portMAX_DELAY);
-                
-                STATE = STATE_P1_TURN;
-                break;
-
-            case STATE_P1_TURN:
-                printf("* --- Currently in Player 1's Turn state        --- *\n\r");
-
-                // In case pass turn pb was pressed while in P2 turn
-                xEventGroupClearBits(xConnectFourEventGroup, EVENT_PASS_TURN_MASK);
-                
-                // Set LEDs
-                cyhal_gpio_write(PIN_GAME_STATE_LED_R, true);
-                cyhal_gpio_write(PIN_GAME_STATE_LED_B, false);
-                cyhal_gpio_write(PIN_GAME_STATE_LED_G, false);
-
-                // wait for push button
-                xEventGroupWaitBits(
-                    xConnectFourEventGroup, 
-                    EVENT_PASS_TURN_MASK,
-                    pdTRUE,
-                    pdTRUE,
-                    portMAX_DELAY);
-                
-                // Player 1 should have put a piece in at this point
-
-                rtos_api_result = xQueueReceive(xLightQueue, &light_value, portMAX_DELAY);
-                printf("Light value received: %d", light_value);
-
-                if (rtos_api_result == pdFALSE)
-                {
-                    printf("ERROR: light value not received\n\r");
-                    CY_ASSERT(0);
-                }
-
-                if (light_value > LIGHT_THRESHOLD)
-                {
-                    printf("Dropper is jammed! Player 1 intervention required.\n\r");
-                    play_sound(SOUND_ERROR);
-                    continue; // stay in p1 turn state
-                } 
-                else 
-                {
-                    printf("Dropper is loaded.\n\r");
-                }
-
-                // Wait for board state from rpi, and send values over ble as well as player 2 turn
-                xQueueReceive(xBoardQueue, board_from_pi, portMAX_DELAY);
-                printf("board received in sm: %s", board_from_pi);
-
-                // Decode char
-                for (int i = 0; i < 42; i++)
-                {
-                    if (board_from_pi[i] == '0')
-                    {
-                        board_state_curr[i] = 0;
-                    }
-                    else if (board_from_pi[i] == '1')
-                    {
-                        board_state_curr[i] = 1;
-                    }
-                    else if (board_from_pi[i] == '2')
-                    {
-                        board_state_curr[i] = 2;
-                    }
-                    else 
-                    {
-                        printf("ERROR: Received an invalid piece value from RPi: %c\n\r", board_from_pi[i]);
-                    }
-                }
-                board_state_curr[42] = 1;
-
-                STATE = STATE_P2_TURN;
-                break;
-
-            case STATE_P2_TURN:
-                printf("* --- Currently in Player 2's Turn state        --- *\n\r");
-
-                // Set LEDs
-                cyhal_gpio_write(PIN_GAME_STATE_LED_R, false);
-                cyhal_gpio_write(PIN_GAME_STATE_LED_B, true);
-                cyhal_gpio_write(PIN_GAME_STATE_LED_G, false);
-
-                // Wait for P2's move over BLE
-                xQueueReceive(xPieceQueue, &p2_move, portMAX_DELAY);
-                // Cleanup move 
-                p2_move = p2_move & 0x07;
-                printf("move received in sm: %x \n\r", p2_move);
-
-                // Control motors to deposit piece
-                deposit(p2_move);
-
-                // Wait for board state from rpi, and send values over ble as well as player 1 turn
-                xQueueReceive(xBoardQueue, board_from_pi, portMAX_DELAY);
-                printf("board received in sm: %s", board_from_pi);
-
-                // Decode char
-                for (int i = 0; i < 42; i++)
-                {
-                    if (board_from_pi[i] == '0')
-                    {
-                        board_state_curr[i] = 0;
-                    }
-                    else if (board_from_pi[i] == '1')
-                    {
-                        board_state_curr[i] = 1;
-                    }
-                    else if (board_from_pi[i] == '2')
-                    {
-                        board_state_curr[i] = 2;
-                    }
-                    else 
-                    {
-                        printf("ERROR: Received an invalid piece value from RPi: %c\n\r", board_from_pi[i]);
-                    }
-                }
-                board_state_curr[42] = 0;
-                /* Send response to GATT Client device */
-                ble_write_response();
-                    
-                STATE = STATE_P1_TURN;
-                break;
-        }
-    }
-}
+// NOTE: PLAYER 1 ASSUMED TO BE YELLOW!
+// NOTE: PLAYER 2 ASSUMED TO BE BLUE!
 
 void task_pole_passturn_pb(void *param)
 {
@@ -563,6 +70,39 @@ void task_pole_passturn_pb(void *param)
     }
 }
 
+void task_pole_start_pb(void *param)
+{
+    /* Suppress warning for unused parameter */
+    (void)param;
+
+    TickType_t xLastWakeTime;
+
+    // PB check freq is 20ms
+    const TickType_t xFrequency = 20/portTICK_PERIOD_MS;
+
+    bool curr_pb_state = PB_NOT_PRESSED;
+    bool prev_pb_state = PB_NOT_PRESSED;
+
+    // Initialise the xLastWakeTime variable with the current time.
+    xLastWakeTime = xTaskGetTickCount();
+
+    for( ;; )
+    {
+        // Wait for the next cycle.
+        vTaskDelayUntil( &xLastWakeTime, xFrequency);
+
+
+        // Get PB level
+        curr_pb_state = cyhal_gpio_read(PIN_START_PB);
+
+        if (curr_pb_state == PB_PRESSED && prev_pb_state == PB_NOT_PRESSED)
+        {
+            xEventGroupSetBits(xConnectFourEventGroup, EVENT_START_GAME_MASK);
+        }
+        prev_pb_state = curr_pb_state;
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Entry point - init, power led, startup sound, start schedular
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -588,12 +128,8 @@ int main(void)
     printf("* --- Initializing LEDs                                     --- *\n\r");
     leds_init();
 
-    printf("* --- Initializing Push Button                              --- *\n\r");
-    rslt = cyhal_gpio_init(
-        PIN_PASS_TURN_PB,
-        CYHAL_GPIO_DIR_INPUT,
-        CYHAL_GPIO_DRIVE_NONE,
-        false);
+    printf("* --- Initializing Push Buttons                              --- *\n\r");
+    pbs_init();
 
     printf("* --- Initializing Light Sensor                             --- *\n\r");
     //light_sensor_init();
@@ -601,7 +137,7 @@ int main(void)
     printf("* --- Initializing Motor Control                            --- *\n\r");
     servo_gpio_init();
     lin_act_init();
-    control_lin(STOP, 0);
+    control_lin(STOP);
 
     printf("* --- Playing startup sound                                 --- *\n\r");
     play_sound(SOUND_STARTUP);
@@ -613,12 +149,6 @@ int main(void)
         printf("XXX ERROR: Event group not created\n\r");
     }
 
-    // Initialize board to empty (remove in production)
-    for (uint8_t i = 0; i < BOARD_SIZE + 1; i++)
-    {
-        board_state_curr[i] = 0;
-    }
-
     // FreeRTOS things
     ble_cmdQ = xQueueCreate(BLE_CMD_Q_LEN, sizeof(uint8_t));
     timer_handle = xTimerCreate("Timer", pdMS_TO_TICKS(1000), pdTRUE, NULL, rtos_timer_cb);
@@ -626,17 +156,6 @@ int main(void)
     xLightQueue = xQueueCreate(1, sizeof(uint16_t));
     xPieceQueue = xQueueCreate(1, sizeof(uint8_t));
     xBoardQueue = xQueueCreate(1, sizeof(char[43]));
-
-    control_lin(BACKWARD, 2000);
-
-    // Tests
-    deposit(6);
-    deposit(5);
-    deposit(4);
-    deposit(3);
-    deposit(2);
-    deposit(1);
-    deposit(0);
     
     xTaskCreate(
         task_pole_passturn_pb,
@@ -645,6 +164,14 @@ int main(void)
         NULL,
         3,
         &xPPBHandle);
+
+    xTaskCreate(
+        task_pole_start_pb,
+        "Pole Start-Game Push Button",
+        configMINIMAL_STACK_SIZE,
+        NULL,
+        3,
+        NULL);
     
     xTaskCreate(
         task_state_manager,
@@ -669,7 +196,6 @@ int main(void)
         NULL,
         4,
         NULL);
-    
     /*
     xTaskCreate(
         task_light_sensor,

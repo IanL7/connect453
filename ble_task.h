@@ -51,6 +51,7 @@
 #include "queue.h"
 #include "timers.h"
 #include "main.h"
+#include <event_groups.h>
 
 /******************************************************************************
  * Structures and Enumerations
@@ -71,6 +72,7 @@ extern bool notify;
 
 extern uint8_t board_state_curr[BOARD_SIZE + 1];
 extern QueueHandle_t xPieceQueue;
+extern EventGroupHandle_t xConnectFourEventGroup;
 
 /******************************************************************************
  * Function prototypes

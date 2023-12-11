@@ -6,6 +6,8 @@
 *
 * Related Document: README.md
 *
+* NOTE: modified by Ian Lodes
+*
 *******************************************************************************
 * Copyright (2020), Cypress Semiconductor Corporation. All rights reserved.
 *******************************************************************************
@@ -48,6 +50,8 @@
 #include "cy_pdl.h"
 #include "main.h"
 #include "cy_retarget_io.h"
+#include "connect453_lib.h"
+#include "state_manager_task.h"
 
 #ifdef EINK_DISPLAY_SHIELD_PRESENT
 #include "display_task.h"
@@ -348,7 +352,6 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
             }
             conn_interval = (conn_param.connIntv) * CONN_INTERVAL_MULTIPLIER;
             printf("Connection Interval is: %f ms\r\n", conn_interval);
-            break;
         }
 
         /* This event is generated when the device is disconnected from remote
@@ -480,6 +483,32 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
 
             /* Start 1 second timer to calculate throughput */
             xTimerStart(timer_handle, (TickType_t)0);
+
+            // Allow the game to start
+            BaseType_t xHigherPriorityTaskWoken, xResult;
+
+            /* xHigherPriorityTaskWoken must be initialised to pdFALSE. */
+            xHigherPriorityTaskWoken = pdFALSE;
+
+            /* Set bit 0 and bit 4 in xEventGroup. */
+            xResult = xEventGroupSetBitsFromISR(
+                            xConnectFourEventGroup,   /* The event group being updated. */
+                            EVENT_BLE_CONNECTED, /* The bits being set. */
+                            &xHigherPriorityTaskWoken );
+
+            /* Was the message posted successfully? */
+            if( xResult != pdFAIL )
+            {
+                /* If xHigherPriorityTaskWoken is now set to pdTRUE then a context
+                switch should be requested.  The macro used is port specific and will
+                be either portYIELD_FROM_ISR() or portEND_SWITCHING_ISR() - refer to
+                the documentation page for the port being used. */
+                portYIELD_FROM_ISR( xHigherPriorityTaskWoken );
+            }
+            else 
+            {
+                printf("ERROR: Unable to start game. See ble_task.c");
+            }
             break;
         }
 

@@ -15,8 +15,7 @@
 #define EMPTY_PIECE                 0
 #define BLUE_PIECE                  1
 #define YELLOW_PIECE                2
-#define BOARD_ERROR                 0
-#define BOARD_VALID                 1
+#define BOARD_NORMAL                1
 #define BOARD_WIN_P1                2
 #define BOARD_WIN_P2                3
 
@@ -37,6 +36,10 @@
 #define RGB_RED                     3
 #define RGB_BLUE                    5
 
+// RGBs
+#define LED_GAME_STATE              0
+#define LED_WINNER                  1   
+
 // SM states
 #define STATE_PAUSE                 0
 #define STATE_INIT                  1
@@ -52,14 +55,12 @@
 // FreeRTOS Event Group masks
 #define ALL_EVENTS_MASK                     0xFFFFFFFF
 #define EVENT_PASS_TURN_MASK                BIT_0
-#define EVENT_PAUSE_MASK                    BIT_1 
-#define EVENT_DROPPER_CLEAR_MASK            BIT_2   
-#define EVENT_BOARD_RECEIVED_MASK           BIT_3
-#define EVENT_P2_MOVE_RECEIVED_MASK         BIT_4
+#define EVENT_START_GAME_MASK               BIT_1
+#define EVENT_BLE_CONNECTED                 BIT_2
 
 // Pins
 #define PIN_PASS_TURN_PB            P10_4
-#define PIN_PAUSE_PB                P10_2
+#define PIN_START_PB                P10_3
 #define PIN_PLAYER1_LED             P10_1
 #define PIN_PLAYER2_LED             P9_4
 #define PIN_RPI_TX                  P5_1
