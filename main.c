@@ -10,6 +10,7 @@
 #include "rpi_task.h"
 #include "connect453_lib.h"
 #include "state_manager_task.h"
+#include "pb_tasks.h"
 
 /* RTOS header files */
 #include <FreeRTOS.h>
@@ -24,84 +25,18 @@
 TaskHandle_t xSMHandle = NULL;
 TaskHandle_t xPPBHandle = NULL;
 
-uint8_t board_state_curr[BOARD_SIZE + 1];
-
 TimerHandle_t timer_handle;
 TaskHandle_t ble_task_handle;
+TaskHandle_t flash_red_task_handle;
 
 QueueHandle_t ble_cmdQ;
 QueueHandle_t xLightQueue;
 QueueHandle_t xPieceQueue;
 QueueHandle_t xBoardQueue;
+QueueHandle_t xBoardBLEQueue;
 
 // NOTE: PLAYER 1 ASSUMED TO BE YELLOW!
 // NOTE: PLAYER 2 ASSUMED TO BE BLUE!
-
-void task_pole_passturn_pb(void *param)
-{
-    /* Suppress warning for unused parameter */
-    (void)param;
-
-    TickType_t xLastWakeTime;
-
-    // PB check freq is 20ms
-    const TickType_t xFrequency = 20/portTICK_PERIOD_MS;
-
-    bool curr_pb_state = PB_NOT_PRESSED;
-    bool prev_pb_state = PB_NOT_PRESSED;
-
-    // Initialise the xLastWakeTime variable with the current time.
-    xLastWakeTime = xTaskGetTickCount();
-
-    for( ;; )
-    {
-        // Wait for the next cycle.
-        vTaskDelayUntil( &xLastWakeTime, xFrequency);
-
-
-        // Get PB level
-        curr_pb_state = cyhal_gpio_read(PIN_PASS_TURN_PB);
-
-        if (curr_pb_state == PB_PRESSED && prev_pb_state == PB_NOT_PRESSED)
-        {
-            xEventGroupSetBits(xConnectFourEventGroup, EVENT_PASS_TURN_MASK);
-        }
-        prev_pb_state = curr_pb_state;
-    }
-}
-
-void task_pole_start_pb(void *param)
-{
-    /* Suppress warning for unused parameter */
-    (void)param;
-
-    TickType_t xLastWakeTime;
-
-    // PB check freq is 20ms
-    const TickType_t xFrequency = 20/portTICK_PERIOD_MS;
-
-    bool curr_pb_state = PB_NOT_PRESSED;
-    bool prev_pb_state = PB_NOT_PRESSED;
-
-    // Initialise the xLastWakeTime variable with the current time.
-    xLastWakeTime = xTaskGetTickCount();
-
-    for( ;; )
-    {
-        // Wait for the next cycle.
-        vTaskDelayUntil( &xLastWakeTime, xFrequency);
-
-
-        // Get PB level
-        curr_pb_state = cyhal_gpio_read(PIN_START_PB);
-
-        if (curr_pb_state == PB_PRESSED && prev_pb_state == PB_NOT_PRESSED)
-        {
-            xEventGroupSetBits(xConnectFourEventGroup, EVENT_START_GAME_MASK);
-        }
-        prev_pb_state = curr_pb_state;
-    }
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////
 // Entry point - init, power led, startup sound, start schedular
@@ -132,15 +67,12 @@ int main(void)
     pbs_init();
 
     printf("* --- Initializing Light Sensor                             --- *\n\r");
-    //light_sensor_init();
+    light_sensor_init();
 
     printf("* --- Initializing Motor Control                            --- *\n\r");
     servo_gpio_init();
     lin_act_init();
     control_lin(STOP);
-
-    printf("* --- Playing startup sound                                 --- *\n\r");
-    play_sound(SOUND_STARTUP);
 
     xConnectFourEventGroup = xEventGroupCreate();
 
@@ -156,6 +88,7 @@ int main(void)
     xLightQueue = xQueueCreate(1, sizeof(uint16_t));
     xPieceQueue = xQueueCreate(1, sizeof(uint8_t));
     xBoardQueue = xQueueCreate(1, sizeof(char[43]));
+    xBoardBLEQueue = xQueueCreate(1, sizeof(char[43]));
     
     xTaskCreate(
         task_pole_passturn_pb,
@@ -196,15 +129,6 @@ int main(void)
         NULL,
         4,
         NULL);
-    /*
-    xTaskCreate(
-        task_light_sensor,
-        "Light Sensor",
-        configMINIMAL_STACK_SIZE,
-        NULL,
-        3,
-        NULL);
-    */
 
     printf("* --- Starting task scheduler                               --- *\n\r");
 

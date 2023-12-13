@@ -1,12 +1,12 @@
 /*
- * light_sensor_task.h
+ * pb_tasks.h
  *
  *  Created on: Nov 30, 2023
- *      Author: Billy Begos and Ian Lodes
+ *      Author: Ian Lodes
  */
 
-#ifndef RPI_TASK_H_
-#define RPI_TASK_H_
+#ifndef PB_TASKS_H_
+#define PB_TASKS_H_
 
 /******************************************************************************
  * Include header files
@@ -15,12 +15,12 @@
 #include "task.h"
 #include "queue.h"
 #include "main.h"
+#include <event_groups.h>
 
-extern QueueHandle_t xBoardQueue;
+extern EventGroupHandle_t xConnectFourEventGroup;
 
 /* Function Prototypes */
-void task_rpi(void *param);
-static bool equal(char board1[], char board2[]);
-static void init_prev_board_state();
+void task_pole_passturn_pb(void *param);
+void task_pole_start_pb(void *param);
 
-#endif /* RPI_TASK_H_ */
+#endif /* PB_TASKS_H_ */

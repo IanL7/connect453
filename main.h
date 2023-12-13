@@ -45,8 +45,8 @@
 #define STATE_INIT                  1
 #define STATE_P1_TURN               2
 #define STATE_P2_TURN               3
-#define STATE_PLAYER1_WIN           4
-#define STATE_PLAYER2_WIN           5
+#define STATE_P1_WIN                4
+#define STATE_P2_WIN                5
 
 // PB states
 #define PB_PRESSED                  false
@@ -78,15 +78,15 @@
 #define PIN_LIN_FORE                P5_6    // Connect to blue lead of linear actuator
 
 // Sounds
-#define SOUND_STARTUP               0
+#define SOUND_BLE_CONNECTED         0
 #define SOUND_ERROR                 1
 #define SOUND_BEGIN                 2
 
 // Configurations
-#define BLE_TASK_STACK_SIZE         (configMINIMAL_STACK_SIZE * 8)
-#define SM_TASK_STACK_SIZE          (configMINIMAL_STACK_SIZE * 4)
+#define BLE_TASK_STACK_SIZE         (configMINIMAL_STACK_SIZE * 32)
+#define SM_TASK_STACK_SIZE          (configMINIMAL_STACK_SIZE * 32)
 #define BLE_CMD_Q_LEN               (10u)
-#define LIGHT_THRESHOLD             100
+#define LIGHT_THRESHOLD             300
 
 // Linear Actuator
 #define FORWARD                     0       

@@ -23,6 +23,7 @@
 EventGroupHandle_t xConnectFourEventGroup;
 
 static cyhal_pwm_t servo_pwm_obj;
+static cyhal_pwm_t pwm_obj;
 
 // Inits P6_3 as PWM and stops the PWM
 void servo_pwm_init()
@@ -41,6 +42,20 @@ void servo_pwm_init()
     rslt = cyhal_pwm_stop(&servo_pwm_obj);
 }
 
+void task_flash_red(void *param)
+{
+    /* Suppress warning for unused parameter */
+    (void)param;
+
+    for (;;)
+    {
+        set_rgb(LED_GAME_STATE, RGB_RED);
+        vTaskDelay(500/portTICK_PERIOD_MS);
+        set_rgb(LED_GAME_STATE, RGB_OFF); 
+        vTaskDelay(500/portTICK_PERIOD_MS); 
+    }
+}
+
 void task_state_manager(void *param)
 {
     /* Suppress warning for unused parameter */
@@ -54,15 +69,35 @@ void task_state_manager(void *param)
     uint8_t p2_move;
     EventBits_t xEventBits;
 
+    uint8_t board_state_curr[BOARD_SIZE + 1];
+    bool board_clear = true;
+
+    // Game has not started - BLE
+    for (int i = 0; i < BOARD_SIZE+1; i++)
+    {
+        board_state_curr[i] = 0;
+    }
+    board_state_curr[42] = 2;
+    xQueueOverwrite(xBoardBLEQueue, board_state_curr);
+
     STATE = STATE_INIT;
+
+    bool p1_first = true;
+
+    bool send_p1_state = true;
+
+    bool restart = true;
+
+    /* Initialize PWM on the supplied pin and assign a new clock */
+    rslt = cyhal_pwm_init(&pwm_obj, P9_6, NULL);
 
     // Wait until BLE is connected
     for (;;)
     {
         set_rgb(LED_GAME_STATE, RGB_BLUE);
-        vTaskDelay(500);
+        vTaskDelay(1000/portTICK_PERIOD_MS);
         set_rgb(LED_GAME_STATE, RGB_OFF); 
-        vTaskDelay(500); 
+        vTaskDelay(1000/portTICK_PERIOD_MS); 
 
         xEventBits = xEventGroupGetBits(xConnectFourEventGroup);
         if ( (xEventBits & EVENT_BLE_CONNECTED) )
@@ -71,6 +106,14 @@ void task_state_manager(void *param)
             break;
         }
     }
+
+    // Play sound for ble connected
+    rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 440);
+    rslt = cyhal_pwm_start(&pwm_obj);
+    vTaskDelay(500/portTICK_PERIOD_MS);
+    rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 523);
+    vTaskDelay(500/portTICK_PERIOD_MS);
+    rslt = cyhal_pwm_stop(&pwm_obj);
 
     // In case pass turn pb or game start pb was pressed while waiting for ble
     xEventGroupClearBits(xConnectFourEventGroup, EVENT_PASS_TURN_MASK);
@@ -86,17 +129,26 @@ void task_state_manager(void *param)
                 cyhal_gpio_write(PIN_PLAYER1_LED, false);
                 cyhal_gpio_write(PIN_PLAYER2_LED, false);
 
-                // Game has not started - BLE
-                board_state_curr[42] = 2;
-
                 xEventGroupWaitBits(
                     xConnectFourEventGroup, 
                     EVENT_START_GAME_MASK,
                     pdTRUE,
                     pdTRUE,
                     portMAX_DELAY);
+
+                rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 523);
+                rslt = cyhal_pwm_start(&pwm_obj);
+                vTaskDelay(500/portTICK_PERIOD_MS);
+                rslt = cyhal_pwm_stop(&pwm_obj);
                 
-                STATE = STATE_P1_TURN;
+                if (p1_first)
+                {
+                    STATE = STATE_P1_TURN;
+                }
+                else 
+                {
+                    STATE = STATE_P2_TURN;
+                }
                 break;
 
             case STATE_P1_TURN:
@@ -105,15 +157,14 @@ void task_state_manager(void *param)
                 cyhal_gpio_write(PIN_PLAYER2_LED, false);
 
                 // P1 turn - BLE
-                board_state_curr[42] = 0;
+                if (send_p1_state)
+                {
+                    board_state_curr[42] = 0;
+                    xQueueOverwrite(xBoardBLEQueue, board_state_curr);
+                }
 
                 // In case pass turn pb was pressed while in P2 turn
                 xEventGroupClearBits(xConnectFourEventGroup, EVENT_PASS_TURN_MASK);
-                
-                // Set LEDs
-                cyhal_gpio_write(PIN_GAME_STATE_LED_R, true);
-                cyhal_gpio_write(PIN_GAME_STATE_LED_B, false);
-                cyhal_gpio_write(PIN_GAME_STATE_LED_G, false);
 
                 // wait for push button
                 xEventGroupWaitBits(
@@ -123,29 +174,32 @@ void task_state_manager(void *param)
                     pdTRUE,
                     portMAX_DELAY);
                 
+                
                 // Player 1 should have put a piece in at this point
-
-                /*
-                rtos_api_result = xQueueReceive(xLightQueue, &light_value, portMAX_DELAY);
+                light_value = read_light_sensor();
                 printf("Light value received: %d", light_value);
 
-                if (rtos_api_result == pdFALSE)
-                {
-                    printf("ERROR: light value not received\n\r");
-                    CY_ASSERT(0);
-                }
-
+                
                 if (light_value > LIGHT_THRESHOLD)
                 {
                     printf("Dropper is jammed! Player 1 intervention required.\n\r");
-                    play_sound(SOUND_ERROR);
-                    continue; // stay in p1 turn state
+
+                    // Flash LED red and play error sound
+                    rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 400);
+                    rslt = cyhal_pwm_start(&pwm_obj);
+                    vTaskDelay(500/portTICK_PERIOD_MS);
+                    rslt = cyhal_pwm_stop(&pwm_obj);
+
+                    send_p1_state = false;
+
+                    STATE = STATE_P1_TURN;
+                    break; // stay in p1 turn state
                 } 
                 else 
                 {
+                    send_p1_state = true;
                     printf("Dropper is loaded.\n\r");
                 }
-                */
 
                 // Wait for board state from rpi, and send values over ble as well as player 2 turn
                 xQueueReceive(xBoardQueue, board_from_pi, portMAX_DELAY);
@@ -172,26 +226,34 @@ void task_state_manager(void *param)
                     }
                 }
                 
-                switch (process_board())
+                switch (process_board(board_state_curr))
                 {
                     case BOARD_NORMAL:
                         board_state_curr[42] = 1;
+                        STATE = STATE_P2_TURN;
                         break;
                     case BOARD_WIN_P1:
                         board_state_curr[42] = 5;
+                        STATE = STATE_P1_WIN;
                         break;
                     case BOARD_WIN_P2:
                         board_state_curr[42] = 4;
+                        STATE = STATE_P2_WIN;
+                        break;
+                    default:
+                        board_state_curr[42] = 1;
+                        STATE = STATE_P2_TURN;
                         break;
                 }
-
-                STATE = STATE_P2_TURN;
                 break;
 
             case STATE_P2_TURN:
                 printf("* --- Currently in Player 2's Turn state        --- *\n\r");
                 cyhal_gpio_write(PIN_PLAYER1_LED, false);
                 cyhal_gpio_write(PIN_PLAYER2_LED, true);
+
+                vTaskDelay(100/portTICK_PERIOD_MS);
+                xQueueOverwrite(xBoardBLEQueue, board_state_curr);
 
                 // Wait for P2's move over BLE
                 xQueueReceive(xPieceQueue, &p2_move, portMAX_DELAY);
@@ -290,23 +352,194 @@ void task_state_manager(void *param)
                     }
                 }
 
-                switch (process_board())
+                switch (process_board(board_state_curr))
                 {
                     case BOARD_NORMAL:
                         board_state_curr[42] = 0;
+                        STATE = STATE_P1_TURN;
                         break;
                     case BOARD_WIN_P1:
                         board_state_curr[42] = 5;
+                        STATE = STATE_P1_WIN;
                         break;
                     case BOARD_WIN_P2:
                         board_state_curr[42] = 4;
+                        STATE = STATE_P2_WIN;
+                        break;
+                    default:
+                        board_state_curr[42] = 0;
+                        STATE = STATE_P1_TURN;
                         break;
                 }
+                xQueueOverwrite(xBoardBLEQueue, board_state_curr);
 
                 /* Send response to GATT Client device */
                 ble_write_response();
-                    
-                STATE = STATE_P1_TURN;
+                break;
+
+            case STATE_P1_WIN:
+                set_rgb(LED_GAME_STATE, RGB_BLUE);
+                board_state_curr[42] = 5;
+
+                xQueueOverwrite(xBoardBLEQueue, board_state_curr);
+
+                for (;;)
+                {
+                    // wait for push button
+                    xEventGroupWaitBits(
+                        xConnectFourEventGroup, 
+                        EVENT_START_GAME_MASK,
+                        pdTRUE,
+                        pdTRUE,
+                        portMAX_DELAY);
+
+                    // Make sure board is clear before restarting
+                    board_clear = true;
+
+                    xQueueReceive(xBoardQueue, board_from_pi, portMAX_DELAY);
+                    printf("board received in sm: %s", board_from_pi);
+
+                    // Decode char
+                    for (int i = 0; i < 42; i++)
+                    {
+                        if (board_from_pi[i] == '0')
+                        {
+                            board_state_curr[i] = 0;
+                        }
+                        else if (board_from_pi[i] == '1')
+                        {
+                            board_state_curr[i] = 1;
+                            board_clear = false;
+                        }
+                        else if (board_from_pi[i] == '2')
+                        {
+                            board_state_curr[i] = 2;
+                            board_clear = false;
+                        }
+                        else 
+                        {
+                            printf("ERROR: Received an invalid piece value from RPi: %c\n\r", board_from_pi[i]);
+                        }
+                    }
+                    xQueueOverwrite(xBoardBLEQueue, board_state_curr);
+
+                    if (board_clear)
+                    {
+                        restart = true;
+                        break;
+                    }
+                    else
+                    {
+                        printf("Clear board before restarting!\n\r");
+
+                        // Flash LED red and play error sound
+                        rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 400);
+                        rslt = cyhal_pwm_start(&pwm_obj);
+                        vTaskDelay(500/portTICK_PERIOD_MS);
+                        rslt = cyhal_pwm_stop(&pwm_obj);
+                        STATE = STATE_P1_WIN;
+                        restart = false;
+                        break;
+                    }
+                }
+
+                if (restart)
+                {
+                    set_rgb(LED_GAME_STATE, RGB_GREEN);
+                    p1_first = !p1_first;
+                    if (p1_first)
+                    {  
+                        board_state_curr[42] = 0;
+                        STATE = STATE_P1_TURN;
+                    }
+                    else 
+                    {
+                        board_state_curr[42] = 1;
+                        STATE = STATE_P2_TURN;
+                    }
+                }
+                break;
+
+            case STATE_P2_WIN:
+                set_rgb(LED_GAME_STATE, RGB_YELLOW);
+                board_state_curr[42] = 4;
+
+                xQueueOverwrite(xBoardBLEQueue, board_state_curr);
+                
+                for (;;)
+                {
+                    // wait for push button
+                    xEventGroupWaitBits(
+                        xConnectFourEventGroup, 
+                        EVENT_START_GAME_MASK,
+                        pdTRUE,
+                        pdTRUE,
+                        portMAX_DELAY);
+
+                    // Make sure board is clear before restarting
+                    board_clear = true;
+
+                    xQueueReceive(xBoardQueue, board_from_pi, portMAX_DELAY);
+                    printf("board received in sm: %s", board_from_pi);
+
+                    // Decode char
+                    for (int i = 0; i < 42; i++)
+                    {
+                        if (board_from_pi[i] == '0')
+                        {
+                            board_state_curr[i] = 0;
+                        }
+                        else if (board_from_pi[i] == '1')
+                        {
+                            board_state_curr[i] = 1;
+                            board_clear = false;
+                        }
+                        else if (board_from_pi[i] == '2')
+                        {
+                            board_state_curr[i] = 2;
+                            board_clear = false;
+                        }
+                        else 
+                        {
+                            printf("ERROR: Received an invalid piece value from RPi: %c\n\r", board_from_pi[i]);
+                        }
+                    }
+                    xQueueOverwrite(xBoardBLEQueue, board_state_curr);
+
+                    if (board_clear)
+                    {
+                        restart = true;
+                        break;
+                    }
+                    else
+                    {
+                        printf("Clear board before restarting!\n\r");
+                        restart = false;
+                        // Flash LED red and play error sound
+                        rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 400);
+                        rslt = cyhal_pwm_start(&pwm_obj);
+                        vTaskDelay(500/portTICK_PERIOD_MS);
+                        rslt = cyhal_pwm_stop(&pwm_obj);
+                        STATE = STATE_P2_WIN;
+                        break;
+                    }
+                }
+
+                if (restart)
+                {
+                    set_rgb(LED_GAME_STATE, RGB_GREEN);
+                    p1_first = !p1_first;
+                    if (p1_first)
+                    {  
+                        board_state_curr[42] = 0;
+                        STATE = STATE_P1_TURN;
+                    }
+                    else 
+                    {
+                        board_state_curr[42] = 1;
+                        STATE = STATE_P2_TURN;
+                    }
+                }
                 break;
         }
     }
