@@ -25,23 +25,6 @@ EventGroupHandle_t xConnectFourEventGroup;
 static cyhal_pwm_t servo_pwm_obj;
 static cyhal_pwm_t pwm_obj;
 
-// Inits P6_3 as PWM and stops the PWM
-void servo_pwm_init()
-{
-     /////////////////////////////////////////////////////////////////
-    // Servo (dropper unit)
-    /////////////////////////////////////////////////////////////////
-    cy_rslt_t rslt;
-    /* Initialize PWM on the supplied pin and assign a new clock */
-    rslt = cyhal_pwm_init(&servo_pwm_obj, P6_3, NULL);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("ERROR: Failed to initialize Servo - PWM\n\r");
-    }
-    /* Stop the PWM output */
-    rslt = cyhal_pwm_stop(&servo_pwm_obj);
-}
-
 void task_flash_red(void *param)
 {
     /* Suppress warning for unused parameter */
@@ -94,6 +77,7 @@ void task_state_manager(void *param)
     // Wait until BLE is connected
     for (;;)
     {
+        // flash game state led blue
         set_rgb(LED_GAME_STATE, RGB_BLUE);
         vTaskDelay(1000/portTICK_PERIOD_MS);
         set_rgb(LED_GAME_STATE, RGB_OFF); 
@@ -107,13 +91,7 @@ void task_state_manager(void *param)
         }
     }
 
-    // Play sound for ble connected
-    rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 440);
-    rslt = cyhal_pwm_start(&pwm_obj);
-    vTaskDelay(500/portTICK_PERIOD_MS);
-    rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 523);
-    vTaskDelay(500/portTICK_PERIOD_MS);
-    rslt = cyhal_pwm_stop(&pwm_obj);
+    play_sound(SOUND_BLE_CONNECTED);
 
     // In case pass turn pb or game start pb was pressed while waiting for ble
     xEventGroupClearBits(xConnectFourEventGroup, EVENT_PASS_TURN_MASK);
@@ -136,11 +114,8 @@ void task_state_manager(void *param)
                     pdTRUE,
                     portMAX_DELAY);
 
-                rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 523);
-                rslt = cyhal_pwm_start(&pwm_obj);
-                vTaskDelay(500/portTICK_PERIOD_MS);
-                rslt = cyhal_pwm_stop(&pwm_obj);
-                
+                play_sound(SOUND_BEGIN);
+
                 if (p1_first)
                 {
                     STATE = STATE_P1_TURN;
@@ -162,6 +137,11 @@ void task_state_manager(void *param)
                     board_state_curr[42] = 0;
                     xQueueOverwrite(xBoardBLEQueue, board_state_curr);
                 }
+                if (send_p1_state)
+                {
+                    board_state_curr[42] = 0;
+                    xQueueOverwrite(xBoardBLEQueue, board_state_curr);
+                }
 
                 // In case pass turn pb was pressed while in P2 turn
                 xEventGroupClearBits(xConnectFourEventGroup, EVENT_PASS_TURN_MASK);
@@ -177,8 +157,8 @@ void task_state_manager(void *param)
                 
                 // Player 1 should have put a piece in at this point
                 light_value = read_light_sensor();
+                light_value = read_light_sensor();
                 printf("Light value received: %d", light_value);
-
                 
                 if (light_value > LIGHT_THRESHOLD)
                 {
@@ -194,9 +174,21 @@ void task_state_manager(void *param)
 
                     STATE = STATE_P1_TURN;
                     break; // stay in p1 turn state
+
+                    // Flash LED red and play error sound
+                    rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 400);
+                    rslt = cyhal_pwm_start(&pwm_obj);
+                    vTaskDelay(500/portTICK_PERIOD_MS);
+                    rslt = cyhal_pwm_stop(&pwm_obj);
+
+                    send_p1_state = false;
+
+                    STATE = STATE_P1_TURN;
+                    break; // stay in p1 turn state
                 } 
                 else 
                 {
+                    send_p1_state = true;
                     send_p1_state = true;
                     printf("Dropper is loaded.\n\r");
                 }
@@ -231,9 +223,11 @@ void task_state_manager(void *param)
                     case BOARD_NORMAL:
                         board_state_curr[42] = 1;
                         STATE = STATE_P2_TURN;
+                        STATE = STATE_P2_TURN;
                         break;
                     case BOARD_WIN_P1:
                         board_state_curr[42] = 5;
+                        STATE = STATE_P1_WIN;
                         STATE = STATE_P1_WIN;
                         break;
                     case BOARD_WIN_P2:
@@ -243,6 +237,7 @@ void task_state_manager(void *param)
                     default:
                         board_state_curr[42] = 1;
                         STATE = STATE_P2_TURN;
+                        STATE = STATE_P2_WIN;
                         break;
                 }
                 break;
@@ -251,6 +246,9 @@ void task_state_manager(void *param)
                 printf("* --- Currently in Player 2's Turn state        --- *\n\r");
                 cyhal_gpio_write(PIN_PLAYER1_LED, false);
                 cyhal_gpio_write(PIN_PLAYER2_LED, true);
+
+                vTaskDelay(100/portTICK_PERIOD_MS);
+                xQueueOverwrite(xBoardBLEQueue, board_state_curr);
 
                 vTaskDelay(100/portTICK_PERIOD_MS);
                 xQueueOverwrite(xBoardBLEQueue, board_state_curr);
@@ -269,7 +267,6 @@ void task_state_manager(void *param)
                 }
 
                 // --- Move forward ---
-
                 int move_time = 1500;
                 switch (p2_move)
                 {
@@ -323,7 +320,6 @@ void task_state_manager(void *param)
                 servo_gpio_init();
 
                 // --- Backup ---
-
                 control_lin(BACKWARD);
                 vTaskDelay(move_time/portTICK_PERIOD_MS); // Wait a bit to prevent fast direction changes
 
@@ -357,9 +353,11 @@ void task_state_manager(void *param)
                     case BOARD_NORMAL:
                         board_state_curr[42] = 0;
                         STATE = STATE_P1_TURN;
+                        STATE = STATE_P1_TURN;
                         break;
                     case BOARD_WIN_P1:
                         board_state_curr[42] = 5;
+                        STATE = STATE_P1_WIN;
                         STATE = STATE_P1_WIN;
                         break;
                     case BOARD_WIN_P2:
@@ -369,8 +367,10 @@ void task_state_manager(void *param)
                     default:
                         board_state_curr[42] = 0;
                         STATE = STATE_P1_TURN;
+                        STATE = STATE_P2_WIN;
                         break;
                 }
+                xQueueOverwrite(xBoardBLEQueue, board_state_curr);
                 xQueueOverwrite(xBoardBLEQueue, board_state_curr);
 
                 /* Send response to GATT Client device */
