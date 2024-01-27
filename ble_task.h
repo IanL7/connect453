@@ -70,9 +70,9 @@ extern QueueHandle_t ble_cmdQ;
 extern TimerHandle_t timer_handle;
 extern bool notify;
 
-extern uint8_t board_state_curr[BOARD_SIZE + 1];
 extern QueueHandle_t xPieceQueue;
 extern EventGroupHandle_t xConnectFourEventGroup;
+extern QueueHandle_t xBoardBLEQueue;
 
 /******************************************************************************
  * Function prototypes

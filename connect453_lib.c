@@ -9,6 +9,12 @@
 
 static cyhal_pwm_t servo_pwm_obj;
 
+/**
+ * @brief set the rgb to a color
+ * 
+ * @param led led to control
+ * @param state color to set led to
+ */
 void set_rgb(int led, int state)
 {
     switch (state)
@@ -87,10 +93,20 @@ void set_rgb(int led, int state)
                 cyhal_gpio_write(PIN_WINNER_LED_G, false);
             }
             break;
+
+        default:
+            printf("invalid rgb color\r\n");
+            break;
     }
 }
 
-uint8_t process_board()
+/**
+ * @brief check the board state array for a winner
+ * 
+ * @param board_state_curr 
+ * @return uint8_t
+ */
+uint8_t process_board(char board_state_curr[43])
 {
     // Check for winner vert
     for (int i = 0; i < BOARD_SIZE - BOARD_WIDTH * 3; i++)
@@ -185,25 +201,25 @@ uint8_t process_board()
     return BOARD_NORMAL;
 }
 
-// Inits P5_6 and P7_7 as GPIO and outputs 0 on both 
+/**
+ * @brief initialize the linear actuator pins for gpio
+ * 
+ */
 void lin_act_init()
 {
     cy_rslt_t rslt;
 
     rslt = cyhal_gpio_init(PIN_LIN_FORE, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("ERROR: Failed to initialize Linear Actuator Fore\n\r");
-    }
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
+
     rslt = cyhal_gpio_init(PIN_LIN_BACK, CYHAL_GPIO_DIR_OUTPUT, CYHAL_GPIO_DRIVE_STRONG, false);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("ERROR: Failed to initialize Linear Actuator Back\n\r");
-    }
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
 }
 
-
-// Inits P6_3 as GPIO and outputs 0 to P6_3
+/**
+ * @brief used to ground servo input while not in use to prevent spurious movements
+ * 
+ */
 void servo_gpio_init()
 {
     cy_rslt_t rslt;
@@ -213,14 +229,34 @@ void servo_gpio_init()
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
         0);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("ERROR: Failed to initialize Servo - GPIO\n\r");
-    }
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
 }
 
-// Control the linear actuator
-//      - delay: ms
+/**
+ * @brief initialize servo pin for pwm
+ * 
+ */
+void servo_pwm_init()
+{
+     /////////////////////////////////////////////////////////////////
+    // Servo (dropper unit)
+    /////////////////////////////////////////////////////////////////
+    cy_rslt_t rslt;
+    /* Initialize PWM on the supplied pin and assign a new clock */
+    rslt = cyhal_pwm_init(&servo_pwm_obj, P6_3, NULL);
+    if (rslt != CY_RSLT_SUCCESS)
+    {
+        printf("ERROR: Failed to initialize Servo - PWM\n\r");
+    }
+    /* Stop the PWM output */
+    rslt = cyhal_pwm_stop(&servo_pwm_obj);
+}
+
+/**
+ * @brief control the linear actuator
+ * 
+ * @param action direction
+ */
 void control_lin(int action)
 {
     switch (action)
@@ -237,12 +273,17 @@ void control_lin(int action)
             cyhal_gpio_write(PIN_LIN_FORE, 0);
             cyhal_gpio_write(PIN_LIN_BACK, 0);
             break;
+        default:
+            printf("invalid actuator control\r\n");
+            break;
     }
 }
 
-// Deposit a piece - move linear actuator and servo
-
-
+/**
+ * @brief play a tone via pwm to amp on psoc6 board
+ * 
+ * @param sound the tone to play 
+ */
 void play_sound(int sound)
 {
     uint32_t sample;
@@ -253,10 +294,7 @@ void play_sound(int sound)
 
     switch (sound)
     {
-        case SOUND_STARTUP:
-            /* Initialize PWM on the supplied pin and assign a new clock */
-            rslt = cyhal_pwm_init(&pwm_obj, P9_6, NULL);
-            rslt = cyhal_pwm_set_duty_cycle(&pwm_obj, 50, 440);
+        case SOUND_BLE_CONNECTED:
             /* Start the PWM output */
             rslt = cyhal_pwm_start(&pwm_obj);
             cyhal_system_delay_ms(500);
@@ -278,28 +316,18 @@ void play_sound(int sound)
             break;
 
         case SOUND_ERROR:
-            /* Initialize DAC, set Pin 9.6 as the DAC output */
-            dac_result = cyhal_dac_init(&my_dac_obj, P9_6);
+            break;
 
-            /* Check the return of cyhal_dac_init to confirm initialization was successful */
-            if (dac_result != CY_RSLT_SUCCESS)
-            {
-                printf("ERROR: DAC failed to initialize\n\r");
-            }
-            // Play the error sound
-            for (sample = 0; sample < 16344; sample++)
-            {
-                /* Write the 16 bit value as DAC input */
-                cyhal_dac_write(&my_dac_obj, 0xFF * error_sound[sample]);
-
-                // Delay for ~1/8000ths of a second, (sample rate of audio array is 8khz)
-                cyhal_system_delay_us(125);
-            }
-            cyhal_dac_free(&my_dac_obj);
+        default:
+            printf("tried to play invalid sound\r\n");
             break;
     }
 }
 
+/**
+ * @brief initialize push buttons for psoc6 board
+ * 
+ */
 void pbs_init()
 {
     cy_rslt_t rslt;
@@ -309,22 +337,20 @@ void pbs_init()
         CYHAL_GPIO_DIR_INPUT,
         CYHAL_GPIO_DRIVE_NONE,
         false);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("ERROR: Failed to initialize pass-turn PB - GPIO\n\r");
-    }
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
 
     rslt = cyhal_gpio_init(
         PIN_START_PB,
         CYHAL_GPIO_DIR_INPUT,
         CYHAL_GPIO_DRIVE_NONE,
         false);
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        printf("ERROR: Failed to initialize start PB - GPIO\n\r");
-    }
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
 }
 
+/**
+ * @brief initialize leds for psoc6 board
+ * 
+ */
 void leds_init()
 {
     // TODO: Add serial indication if an error occurred for a specific LED
@@ -336,15 +362,7 @@ void leds_init()
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
         false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: LED P2 failed to initialize\n\r");
-        };
-    }
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
 
     // LED 3 (Player 1 Turn)
     rslt = cyhal_gpio_init(
@@ -352,15 +370,7 @@ void leds_init()
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
         false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: LED P1 failed to initialize\n\r");
-        };
-    }
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
 
     // RGB LED 1
     rslt = cyhal_gpio_init(
@@ -368,43 +378,21 @@ void leds_init()
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
         false);
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
 
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: RGB LED 1 - R failed to initialize\n\r");
-        };
-    }
     rslt = cyhal_gpio_init(
         PIN_GAME_STATE_LED_G,
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
         false);
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
 
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: RGB LED 1 - G failed to initialize\n\r");
-        };
-    }
     rslt = cyhal_gpio_init(
         PIN_GAME_STATE_LED_B,
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
         false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: RGB LED 1 - B failed to initialize\n\r");
-        };
-    }
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
 
     // RGB LED 2
     rslt = cyhal_gpio_init(
@@ -412,41 +400,19 @@ void leds_init()
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
         false);
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
 
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: RGB LED 2 - R failed to initialize\n\r");
-        };
-    }
     rslt = cyhal_gpio_init(
         PIN_WINNER_LED_G,
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
         false);
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
 
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: RGB LED 2 - G failed to initialize\n\r");
-        };
-    }
     rslt = cyhal_gpio_init(
         PIN_WINNER_LED_B,
         CYHAL_GPIO_DIR_OUTPUT,
         CYHAL_GPIO_DRIVE_STRONG,
         false);
-
-    if (rslt != CY_RSLT_SUCCESS)
-    {
-        CY_ASSERT(0);
-        while (1)
-        {
-            printf("ERROR: RGB LED 2 - B failed to initialize\n\r");
-        };
-    }
+    CY_ASSERT(CY_RSLT_SUCCESS == rslt);
 }

@@ -107,6 +107,8 @@ static cy_stc_ble_gatt_handle_value_pair_t custom_data;
 /* Variable to store MTU size for active BLE connection */
 static uint16_t att_mtu_size = CY_BLE_GATT_MTU;
 
+static uint8_t board_state_ble[BOARD_SIZE + 1];
+
 #ifdef EINK_DISPLAY_SHIELD_PRESENT
 /* Variable used to refresh the E-ink display every 5 seconds */
 static uint8_t count_five_sec;
@@ -570,11 +572,22 @@ static void ble_stack_event_handler (uint32_t event, void *eventParam)
             //printf("BLE Stack Event : CY_BLE_EVT_GATTS_READ_CHAR_VAL_ACCESS_REQ");
             read_req_param = (cy_stc_ble_gatts_char_val_read_req_t *)eventParam;
 
-            if (CY_BLE_BOARD_USR_BRD_CHAR_HANDLE == read_req_param->attrHandle)
+            BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+            char cRxedChar;
+
+            xQueueReceiveFromISR( xBoardBLEQueue,
+                                        board_state_ble,
+                                        &xHigherPriorityTaskWoken);
+
+            //printf("[INFO] : trying to read from USR_BRD characteristic\r\n");
+            CY_BLE_GATT_DB_ATTR_SET_GEN_VALUE(CY_BLE_BOARD_USR_BRD_CHAR_HANDLE,&board_state_ble,43);
+            /* We can switch context if necessary. */
+            /*
+            if( xHigherPriorityTaskWoken )
             {
-            	//printf("[INFO] : trying to read from USR_BRD characteristic\r\n");
-            	CY_BLE_GATT_DB_ATTR_SET_GEN_VALUE(CY_BLE_BOARD_USR_BRD_CHAR_HANDLE,&board_state_curr,43);
+                portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
             }
+            */
             break;
         }
 

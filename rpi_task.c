@@ -34,10 +34,10 @@ void task_rpi(void *param)
         if(ALERT_CONSOLE_RX)
         {
             // send board state
-            if (!equal(pcInputString, prev_board_state))
-            {
-                xQueueOverwrite(xBoardQueue, pcInputString);
-            }
+            //if (!equal(pcInputString, prev_board_state))
+            //{
+            xQueueOverwrite(xBoardQueue, pcInputString);
+            //}
             
             // copy current board state to previous board state
             for (int i = 0; i < BOARD_SIZE; i++)
@@ -45,7 +45,7 @@ void task_rpi(void *param)
                 prev_board_state[i] = pcInputString[i];
             } 
 
-            printf("Rx'd: %s\n", pcInputString);
+            //printf("Rx'd: %s\n", pcInputString);
             
             memset(pcInputString, 0, 500);
             cInputIndex = 0;

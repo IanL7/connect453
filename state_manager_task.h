@@ -19,10 +19,12 @@
 extern QueueHandle_t xBoardQueue;
 extern QueueHandle_t xLightQueue;
 extern QueueHandle_t xPieceQueue;
-extern uint8_t board_state_curr[BOARD_SIZE + 1];
+extern TaskHandle_t flash_red_task_handle;
+extern QueueHandle_t xBoardBLEQueue;
 
 /* Function Prototypes */
 void task_state_manager(void *param);
+void task_flash_red(void *param);
 
 
 #endif /* STATE_MANAGER_TASK_H_ */
