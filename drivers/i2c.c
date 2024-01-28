@@ -34,6 +34,10 @@ cy_rslt_t i2c_init(void)
 
 	    while(1){};
 	}
+	else
+	{
+		printf("staff i2c init successful 1\n\r");
+	}
 
     // Configure the I2C resource to be monarch
 	rslt = cyhal_i2c_configure(&i2c_master_obj, &i2c_master_config) ;
@@ -43,6 +47,10 @@ cy_rslt_t i2c_init(void)
 	    CY_ASSERT(0);
 
 	    while(1){};
+	}
+	else
+	{
+		printf("staff i2c init successful 2\n\r");
 	}
 
 	return CY_RSLT_SUCCESS;

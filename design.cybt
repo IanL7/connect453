@@ -179,23 +179,23 @@
                         </Service>
                         <Service type="org.bluetooth.service.custom">
                             <ServiceProperties>
-                                <Property id="DisplayName" value="LEDS"/>
-                                <Property id="EntityID" value="{d7b7625d-2495-4aa3-87af-134b6439bc98}"/>
-                                <Property id="UUID" value="D4C5584F-2E8B-48DF-A289-DF4A1F85775D"/>
+                                <Property id="DisplayName" value="P2MOVEVAL"/>
+                                <Property id="EntityID" value="{48539ddc-dab7-457e-a21a-fcfecf4ad9ef}"/>
+                                <Property id="UUID" value="7589CC5E-3105-415B-A5EA-649E62C2C8E3"/>
                                 <Property id="ServiceDeclaration" value="Primary"/>
                             </ServiceProperties>
                             <Characteristics>
                                 <Characteristic type="org.bluetooth.characteristic.custom">
                                     <CharacteristicProperties>
-                                        <Property id="DisplayName" value="USR_LED"/>
-                                        <Property id="UUID" value="4235B4B9-367D-4CB4-9D9A-A5D0FAF6F6BE"/>
+                                        <Property id="DisplayName" value="USR_P2MOVE_VAL"/>
+                                        <Property id="UUID" value="D22D4953-D396-4880-88BC-904A49758CEE"/>
                                     </CharacteristicProperties>
                                     <Fields>
                                         <Field>
                                             <FieldProperties>
-                                                <Property id="Name" value="RED"/>
+                                                <Property id="Name" value="P2_MOVE_VAL"/>
                                                 <Property id="Value" value=""/>
-                                                <Property id="Format" value="f_8bit"/>
+                                                <Property id="Format" value="f_uint8"/>
                                             </FieldProperties>
                                         </Field>
                                     </Fields>
@@ -262,9 +262,9 @@
                                                 <Field>
                                                     <FieldProperties>
                                                         <Property id="Name" value="User Description"/>
-                                                        <Property id="Value" value="USR LED PWM"/>
+                                                        <Property id="Value" value="P2 MOVE VALUE"/>
                                                         <Property id="Format" value="f_utf8s"/>
-                                                        <Property id="ByteLength" value="11"/>
+                                                        <Property id="ByteLength" value="13"/>
                                                     </FieldProperties>
                                                 </Field>
                                             </Fields>
@@ -297,23 +297,24 @@
                         </Service>
                         <Service type="org.bluetooth.service.custom">
                             <ServiceProperties>
-                                <Property id="DisplayName" value="BUTTONS"/>
-                                <Property id="EntityID" value="{acf9bb3d-4df3-4bd7-accc-91f00e625271}"/>
-                                <Property id="UUID" value="A88D0B3B-CDCD-4878-969E-940F0C47E05C"/>
+                                <Property id="DisplayName" value="BOARD"/>
+                                <Property id="EntityID" value="{d38ff169-3e01-46b8-9083-0f51e257a875}"/>
+                                <Property id="UUID" value="18833412-46E6-47B4-8524-910D569362A0"/>
                                 <Property id="ServiceDeclaration" value="Primary"/>
                             </ServiceProperties>
                             <Characteristics>
                                 <Characteristic type="org.bluetooth.characteristic.custom">
                                     <CharacteristicProperties>
-                                        <Property id="DisplayName" value="USR_BTN"/>
-                                        <Property id="UUID" value="FA8D50C4-DFD8-45C2-8D81-9BFC5F71BD57"/>
+                                        <Property id="DisplayName" value="USR_BRD"/>
+                                        <Property id="UUID" value="0D36242B-792A-4204-BFC1-1B3A8BD3407D"/>
                                     </CharacteristicProperties>
                                     <Fields>
                                         <Field>
                                             <FieldProperties>
-                                                <Property id="Name" value="New field"/>
+                                                <Property id="Name" value="BRD_ARRAY"/>
                                                 <Property id="Value" value=""/>
-                                                <Property id="Format" value="f_8bit"/>
+                                                <Property id="Format" value="f_uint8_array"/>
+                                                <Property id="ByteLength" value="43"/>
                                             </FieldProperties>
                                         </Field>
                                     </Fields>
@@ -380,9 +381,9 @@
                                                 <Field>
                                                     <FieldProperties>
                                                         <Property id="Name" value="User Description"/>
-                                                        <Property id="Value" value="BTN COUNT"/>
+                                                        <Property id="Value" value="BOARD STATE ARRAY"/>
                                                         <Property id="Format" value="f_utf8s"/>
-                                                        <Property id="ByteLength" value="9"/>
+                                                        <Property id="ByteLength" value="17"/>
                                                     </FieldProperties>
                                                 </Field>
                                             </Fields>

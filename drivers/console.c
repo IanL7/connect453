@@ -13,11 +13,17 @@ extern cyhal_uart_t cy_retarget_io_uart_obj;
 volatile bool ALERT_CONSOLE_RX = false;
 
 char pcInputString[ DEBUG_MESSAGE_MAX_LEN ];
-int8_t cInputIndex = 0;
-int8_t lastIndex = 0;
-char inputString[20];
+int16_t cInputIndex = 0;
 
-/*******************************************************************************
+void returnData(char* string){
+	// char *data = "Hello World!";
+	// for(int i = 0; data[i]!=0; i++){
+	// 	cyhal_uart_putc(&cy_retarget_io_uart_obj, data[i]);
+	// }
+	// cyhal_uart_putc(&cy_retarget_io_uart_obj, "~");
+
+}
+/*****************************s**************************************************
 * Function Name: ece453_console_event_handler
 ********************************************************************************
 * Summary:
@@ -48,26 +54,20 @@ void console_event_handler(void *handler_arg, cyhal_uart_event_t event)
 		// Received a character.
     	// ADD CODE to receive a character using the HAL UART API
     	status = cyhal_uart_getc(&cy_retarget_io_uart_obj, (uint8_t *)&value, 1);
-	
+		
 
     	c = (char)value;
-
     	if(status == CY_RSLT_SUCCESS)
     	{
     		// Echo out the character
         	// ADD CODE to transmit a character using the HAL UART API
-    		cyhal_uart_putc(&cy_retarget_io_uart_obj, value);
+    		//cyhal_uart_putc(&cy_retarget_io_uart_obj, value);
 
     		// If the ISR detects that the user has pressed the ENTER key,
 			// Send a task notification to Task_Console
-			if (c == '\n' || c == '\r')
+			if (c == '\r' || c == '\n')
 			{
 				ALERT_CONSOLE_RX = true;
-
-				memset(inputString, 0, 20);
-				memcpy(inputString, &pcInputString[lastIndex], cInputIndex);
-				lastIndex = cInputIndex;
-				
 			}
 			else
 			{
@@ -82,7 +82,9 @@ void console_event_handler(void *handler_arg, cyhal_uart_event_t event)
 					pcInputString[cInputIndex] = c;
 					cInputIndex++;
 				}
+
 			}
+
 
     	}
 
