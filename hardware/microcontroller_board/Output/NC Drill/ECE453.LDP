@@ -1,0 +1,3 @@
+Layer Pairs Export File for PCB: C:\Users\yarntheory\Desktop\ECE453\ECE453_PSoC6Board\ECE453.PcbDoc
+LayersSetName=Top_Bot_Thru_Holes|DrillFile=ece453-roundholes.txt|DrillLayers=gtl,gbl
+LayersSetName=Top_Bot_Slot_Holes|DrillFile=ece453-slotholes.txt|DrillLayers=gtl,gbl
