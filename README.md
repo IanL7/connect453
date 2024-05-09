@@ -1,5 +1,5 @@
 # Connect453
-*Capstone project for ECE 453 at UW Madison - 2023*
+*Capstone project for ECE 453 at UW Madison - Fall 2023*
 
 Connect453 is a machine that accepts a standard Connect 4 game board, and allows for remote play from a laptop (Over BLE) for one of the two players.
 
