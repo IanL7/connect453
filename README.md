@@ -11,7 +11,7 @@ This repository contains the software and hardware designed for the project.
 
 ## Team members and roles
 - Ian Lodes
-    - Software for the microcontroller board (game logic and BLE integration) 
+    - Software for the microcontroller board (game application, peripheral drivers, and BLE integration) 
     - Hardware design of the microcontroller board and the relay board
     - Contribution to the UI (BLE integration and testing)
 - Christian VanIten
