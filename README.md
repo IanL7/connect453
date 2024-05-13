@@ -3,16 +3,16 @@
 
 Connect453 is a machine that accepts a standard Connect 4 game board, and allows for remote play from a laptop (over BLE) for one of the two players.
 
-This repository contains the software and hardware designed for the project.
+This repository contains the software and hardware (Altium Designer project files) designed for the project.
 
-## Photos
+## Picture
 ![](images/connect453_coe_blog.jpeg)
 - Taken from UW Madison COE Blog (https://engineering.wisc.edu/blog/ece-453-students-present-capstone-projects-at-open-house/)
 
 ## Team members and roles
 - Ian Lodes
-    - Software for the microcontroller board (game application, peripheral drivers, and BLE integration) 
-    - Hardware design of the microcontroller board and the relay board
+    - Software for the microcontroller (Infineon PSoC6) board (game application, peripheral drivers, and BLE integration) 
+    - Hardware design of the microcontroller board (PSoC6 and speaker amplifier) and the relay board (drives a linear actuator)
     - Contribution to the UI (BLE integration and testing)
 - Christian VanIten
     - Software for the microcontroller board (I2C communication with the light sensor board)
