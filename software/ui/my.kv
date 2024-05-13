@@ -1,0 +1,282 @@
+#:kivy 1.0.9
+#:import GridLayout kivy.uix.gridlayout
+
+<GridWidget>:
+    piece00: piece_00
+    piece01: piece_01
+    piece02: piece_02
+    piece03: piece_03
+    piece04: piece_04
+    piece05: piece_05
+    piece06: piece_06
+    piece10: piece_10
+    piece11: piece_11
+    piece12: piece_12
+    piece13: piece_13
+    piece14: piece_14
+    piece15: piece_15
+    piece16: piece_16
+    piece20: piece_20
+    piece21: piece_21
+    piece22: piece_22
+    piece23: piece_23
+    piece24: piece_24
+    piece25: piece_25
+    piece26: piece_26
+    piece30: piece_30
+    piece31: piece_31
+    piece32: piece_32
+    piece33: piece_33
+    piece34: piece_34
+    piece35: piece_35
+    piece36: piece_36
+    piece40: piece_40
+    piece41: piece_41
+    piece42: piece_42
+    piece43: piece_43
+    piece44: piece_44
+    piece45: piece_45
+    piece46: piece_46
+    piece50: piece_50
+    piece51: piece_51
+    piece52: piece_52
+    piece53: piece_53
+    piece54: piece_54
+    piece55: piece_55
+    piece56: piece_56
+    canvas:
+        Color:
+            rgba: 1,1,1,1
+        Rectangle:
+            pos: 0, 0
+            size: 10, self.height-100
+        Rectangle:
+            pos: 114, 0
+            size: 10, self.height-100
+        Rectangle:
+            pos: 228, 0
+            size: 10, self.height-100 
+        Rectangle:
+            pos: 342, 0
+            size: 10, self.height-100          
+        Rectangle:
+            pos: 456, 0
+            size: 10, self.height-100   
+        Rectangle:
+            pos: 570, 0
+            size: 10, self.height-100
+        Rectangle:
+            pos: 684, 0
+            size: 10, self.height-100    
+        Rectangle:
+            pos: 790, 0
+            size: 10, self.height-100
+        Rectangle:
+            pos: 0, 83
+            size: self.width, 10
+        Rectangle:
+            pos: 0, 166
+            size: self.width, 10
+        Rectangle:
+            pos: 0, 249
+            size: self.width, 10
+        Rectangle:
+            pos: 0, 332
+            size: self.width, 10
+        Rectangle:
+            pos: 0, 415
+            size: self.width, 10
+        Rectangle:
+            pos: 0, 0
+            size: self.width, 10
+        Rectangle:
+            pos: 0, 498
+            size: self.width, 10
+    Label:
+        font_size: 70
+        center_x: root.width/2
+        top: root.top
+        text: root.piece00.text
+    Button:
+        size: 104, 490
+        pos: 10,10
+        background_color: 1,1,1,.5
+        background_normal: ""
+        on_release:
+            app.root.placePiece(root,0)
+    Button:
+        size: 104, 490
+        pos: 124,10
+        background_color: 1,1,1,.5
+        background_normal: ""
+        on_release:
+            app.root.placePiece(root,1)
+    Button:
+        size: 104, 490
+        pos: 238,10
+        background_color: 1,1,1,.5
+        background_normal: ""
+        on_release:
+            app.root.placePiece(root,2)
+    Button:
+        size: 104, 490
+        pos: 352,10
+        background_color: 1,1,1,.5
+        background_normal: ""
+        on_release:
+            app.root.placePiece(root,3)
+    Button:
+        size: 104,490
+        pos: 466,10
+        background_color: 1,1,1,.5
+        background_normal: ""
+        on_release:
+            app.root.placePiece(root,4)
+    Button:
+        size: 104, 490
+        pos: 580,10
+        background_color: 1,1,1,.5
+        background_normal: "" 
+        on_release:
+            app.root.placePiece(root,5)
+    Button:
+        size: 98, 490
+        pos: 694,10
+        background_color: 1,1,1,.5
+        background_normal: ""
+        on_release:
+            app.root.placePiece(root,6)
+            app.root.threadHandler(root)
+    Piece:
+        id: piece_00
+        pos: 35,20
+    Piece:
+        id: piece_01
+        pos: 149, 20
+    Piece:
+        id: piece_02
+        pos: 263, 20
+    Piece:
+        id: piece_03
+        pos: 377, 20
+    Piece:
+        id: piece_04
+        pos: 491, 20
+    Piece:
+        id: piece_05
+        pos: 605, 20
+    Piece:
+        id: piece_06
+        pos: 719, 20
+    Piece:
+        id: piece_10
+        pos: 35,103
+    Piece:
+        id: piece_11
+        pos: 149, 103
+    Piece:
+        id: piece_12
+        pos: 263, 103
+    Piece:
+        id: piece_13
+        pos: 377, 103
+    Piece:
+        id: piece_14
+        pos: 491, 103
+    Piece:
+        id: piece_15
+        pos: 605, 103
+    Piece:
+        id: piece_16
+        pos: 719, 103
+    Piece:
+        id: piece_20
+        pos: 35,186
+    Piece:
+        id: piece_21
+        pos: 149, 186
+    Piece:
+        id: piece_22
+        pos: 263, 186
+    Piece:
+        id: piece_23
+        pos: 377, 186
+    Piece:
+        id: piece_24
+        pos: 491, 186
+    Piece:
+        id: piece_25
+        pos: 605, 186
+    Piece:
+        id: piece_26
+        pos: 719, 186
+    Piece:
+        id: piece_30
+        pos: 35,269
+    Piece:
+        id: piece_31
+        pos: 149, 269
+    Piece:
+        id: piece_32
+        pos: 263, 269
+    Piece:
+        id: piece_33
+        pos: 377, 269
+    Piece:
+        id: piece_34
+        pos: 491, 269
+    Piece:
+        id: piece_35
+        pos: 605, 269
+    Piece:
+        id: piece_36
+        pos: 719, 269
+    Piece:
+        id: piece_40
+        pos: 35,352
+    Piece:
+        id: piece_41
+        pos: 149, 352
+    Piece:
+        id: piece_42
+        pos: 263, 352
+    Piece:
+        id: piece_43
+        pos: 377, 352
+    Piece:
+        id: piece_44
+        pos: 491, 352
+    Piece:
+        id: piece_45
+        pos: 605, 352
+    Piece:
+        id: piece_46
+        pos: 719, 352
+    Piece:
+        id: piece_50
+        pos: 35,435
+    Piece:
+        id: piece_51
+        pos: 149, 435
+    Piece:
+        id: piece_52
+        pos: 263, 435
+    Piece:
+        id: piece_53
+        pos: 377, 435
+    Piece:
+        id: piece_54
+        pos: 491, 435
+    Piece:
+        id: piece_55
+        pos: 605, 435
+    Piece:
+        id: piece_56
+        pos: 719, 435
+<Piece>:
+    canvas:
+        Color:
+            rgba: self.r,self.g,self.b,self.a
+        Ellipse:
+            size: 50,50
+            pos: self.pos
