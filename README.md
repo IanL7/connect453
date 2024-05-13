@@ -14,7 +14,7 @@ This repository contains the software and hardware (Altium Designer project file
     - Software for the microcontroller (Infineon PSoC6) board (game application, peripheral drivers, and BLE integration) 
     - PCB design of the microcontroller board (PSoC6 and speaker amplifier) and the relay board (drives a linear actuator)
     - Contribution to the UI (BLE integration and testing)
-- Christian VanIten
+- Christian Van Iten
     - Software for the microcontroller board (I2C communication with the light sensor board)
     - PCB design of the light sensor board and the distance sensor board
     - Fabrication of the machine front panel and game piece dropper
