@@ -1,9 +1,15 @@
 # Connect453
 *Capstone project for ECE 453 at UW Madison - Fall 2023*
 
-Connect453 is a machine that accepts a standard Connect 4 game board, and allows for remote play from a laptop (Over BLE) for one of the two players.
+Connect453 is a machine that accepts a standard Connect 4 game board, and allows for remote play from a laptop (over BLE) for one of the two players.
 
 This repository contains the software and hardware designed for the project.
+
+## Photos
+![](images/connect453_coe_blog.jpeg)
+- Taken from UW Madison COE Blog (https://engineering.wisc.edu/blog/ece-453-students-present-capstone-projects-at-open-house/)
+![](images/connect453_back_view.jpeg)
+- View of internals
 
 ## Team members and roles
 - Ian Lodes
