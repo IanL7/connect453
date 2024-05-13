@@ -29,4 +29,4 @@ This repository contains the software and hardware (Altium Designer project file
 - FreeRTOS
 - [Infineon 'bless' BLE stack](https://github.com/Infineon/bless)
 - [Infineon HAL](https://github.com/Infineon/mtb-hal-cat1)
-
+- Kivy
