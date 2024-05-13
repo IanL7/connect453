@@ -12,17 +12,17 @@ This repository contains the software and hardware (Altium Designer project file
 ## Team members and roles
 - Ian Lodes
     - Software for the microcontroller (Infineon PSoC6) board (game application, peripheral drivers, and BLE integration) 
-    - Hardware design of the microcontroller board (PSoC6 and speaker amplifier) and the relay board (drives a linear actuator)
+    - PCB design of the microcontroller board (PSoC6 and speaker amplifier) and the relay board (drives a linear actuator)
     - Contribution to the UI (BLE integration and testing)
 - Christian VanIten
     - Software for the microcontroller board (I2C communication with the light sensor board)
-    - Hardware design of the light sensor board and the distance sensor board
+    - PCB design of the light sensor board and the distance sensor board
     - Fabrication of the machine front panel and game piece dropper
 - Billy Begos
     - Software for the Rasberry Pi (image capture and UART communication)
     - Software for the UI
 - Avery Dolinsek
-    - Hardware design of the motor driver board
+    - PCB design of the motor driver board
     - Construction of the machine frame base
 
 ## Software frameworks used
