@@ -9,9 +9,6 @@ This repository contains the software and hardware designed for the project.
 ![](images/connect453_coe_blog.jpeg)
 - Taken from UW Madison COE Blog (https://engineering.wisc.edu/blog/ece-453-students-present-capstone-projects-at-open-house/)
 
-![](images/connect453_back_view.jpeg)
-- View of internals
-
 ## Team members and roles
 - Ian Lodes
     - Software for the microcontroller board (game logic and BLE integration) 
@@ -19,7 +16,7 @@ This repository contains the software and hardware designed for the project.
     - Contribution to the UI (BLE integration and testing)
 - Christian VanIten
     - Software for the microcontroller board (I2C communication with the light sensor board)
-    - Hardware design of the light sensor board
+    - Hardware design of the light sensor board and the distance sensor board
     - Fabrication of the machine front panel and game piece dropper
 - Billy Begos
     - Software for the Rasberry Pi (image capture and UART communication)
