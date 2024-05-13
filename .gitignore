@@ -136,6 +136,7 @@ Backup*
 
 # macOS Finder incidental files
 .DS_Store
+._.DS_Store
 
 # Windows Explorer incidental files
 Thumbs.db
