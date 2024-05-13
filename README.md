@@ -8,6 +8,7 @@ This repository contains the software and hardware designed for the project.
 ## Photos
 ![](images/connect453_coe_blog.jpeg)
 - Taken from UW Madison COE Blog (https://engineering.wisc.edu/blog/ece-453-students-present-capstone-projects-at-open-house/)
+
 ![](images/connect453_back_view.jpeg)
 - View of internals
 
