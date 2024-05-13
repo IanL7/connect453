@@ -3,7 +3,7 @@
 
 Connect453 is a machine that accepts a standard Connect 4 game board, and allows for remote play from a laptop (over BLE) for one of the two players.
 
-This repository contains the software and hardware (Altium Designer project files) designed for the project.
+This repository contains most of the software and hardware (Altium Designer project files) designed for the project.
 
 ## Picture
 ![](images/connect453_coe_blog.jpeg)
